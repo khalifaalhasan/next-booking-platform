@@ -1,8 +1,9 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layouts/Navbar"; // Import Navbar
-import NextTopLoader from "nextjs-toploader"; // Loader yg kemarin kita pasang
+import NextTopLoader from "nextjs-toploader";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,14 +20,12 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={inter.className}>
-        {/* 1. Loader di paling atas */}
         <NextTopLoader color="#2563eb" showSpinner={false} />
 
-        {/* 2. Navbar menempel di atas */}
-        <Navbar />
+        {/* DISINI TIDAK ADA NAVBAR */}
+        {children}
 
-        {/* 3. Konten Halaman */}
-        <main className="min-h-screen bg-white">{children}</main>
+        <Toaster position="top-center" />
       </body>
     </html>
   );
