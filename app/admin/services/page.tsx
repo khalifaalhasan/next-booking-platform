@@ -4,12 +4,20 @@ import ServiceManager from "@/components/pages/admin/ServiceManager";
 export default async function AdminServicesPage() {
   const supabase = await createClient();
 
-  // Fetch data di server (SEO friendly & Cepat)
+  // PERBAIKAN DI SINI: Tambahkan Relasi 'categories(name)'
   const { data: services } = await supabase
     .from("services")
-    .select("*")
+    .select(
+      `
+      *,
+      categories (
+        name
+      )
+    `
+    )
     .order("created_at", { ascending: false });
 
-  // Oper data ke Client Component yang menghandle interaksi (Modal/Dialog)
-  return <ServiceManager initialServices={services || []} />;
+  // Casting manual karena tipe join Supabase kadang tricky
+  // Pastikan ServiceManager menerima tipe data yang sesuai
+  return <ServiceManager initialServices={(services as any) || []} />;
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import ServiceForm from "@/components/pages/admin/ServiceForm";
+import Image from "next/image"; // Pakai Image Next.js
 import {
   Table,
   TableBody,
@@ -22,41 +23,43 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { Tables } from "@/types/supabase";
+
+// Define Tipe Data dengan Relasi
+type ServiceWithCategory = Tables<"services"> & {
+  categories: { name: string } | null; // Relasi ke tabel categories
+};
 
 export default function ServiceManager({
   initialServices,
 }: {
-  initialServices: any[];
+  initialServices: ServiceWithCategory[];
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<any>(null); // Jika null = Create, Jika ada data = Edit
+  const [selectedService, setSelectedService] = useState<ServiceWithCategory | null>(null);
+  
   const supabase = createClient();
   const router = useRouter();
 
-  // Buka dialog untuk CREATE
+  // Create
   const handleCreate = () => {
     setSelectedService(null);
     setIsDialogOpen(true);
   };
 
-  // Buka dialog untuk EDIT
-  const handleEdit = (service: any) => {
+  // Edit
+  const handleEdit = (service: ServiceWithCategory) => {
     setSelectedService(service);
     setIsDialogOpen(true);
   };
 
-  // Handle DELETE
+  // Delete
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        "Yakin ingin menghapus service ini? Data yang dihapus tidak bisa dikembalikan."
-      )
-    )
-      return;
+    if (!confirm("Yakin ingin menghapus service ini? Data yang dihapus tidak bisa dikembalikan.")) return;
 
     const { error } = await supabase.from("services").delete().eq("id", id);
     if (error) alert("Gagal hapus: " + error.message);
-    else router.refresh(); // Refresh server component
+    else router.refresh();
   };
 
   return (
@@ -74,6 +77,7 @@ export default function ServiceManager({
           <TableHeader>
             <TableRow>
               <TableHead>Nama Service</TableHead>
+              <TableHead>Kategori</TableHead> {/* Kolom Baru */}
               <TableHead>Harga</TableHead>
               <TableHead>Unit</TableHead>
               <TableHead>Status</TableHead>
@@ -85,16 +89,33 @@ export default function ServiceManager({
               <TableRow key={svc.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
-                    {svc.images?.[0] && (
-                      <img
-                        src={svc.images[0]}
-                        className="w-10 h-10 rounded object-cover"
-                        alt=""
-                      />
+                    {svc.images?.[0] ? (
+                      <div className="relative w-10 h-10 rounded overflow-hidden">
+                        <Image 
+                          src={svc.images[0]} 
+                          alt="" 
+                          fill 
+                          className="object-cover" 
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-400">Img</div>
                     )}
                     {svc.name}
                   </div>
                 </TableCell>
+                
+                {/* MENAMPILKAN KATEGORI */}
+                <TableCell>
+                  {svc.categories ? (
+                    <Badge variant="secondary" className="font-normal">
+                      {svc.categories.name}
+                    </Badge>
+                  ) : (
+                    <span className="text-gray-400 text-sm">-</span>
+                  )}
+                </TableCell>
+
                 <TableCell>
                   {new Intl.NumberFormat("id-ID", {
                     style: "currency",
@@ -107,7 +128,7 @@ export default function ServiceManager({
                 </TableCell>
                 <TableCell>
                   {svc.is_active ? (
-                    <Badge className="bg-green-600">Aktif</Badge>
+                    <Badge className="bg-green-600 hover:bg-green-700">Aktif</Badge>
                   ) : (
                     <Badge variant="secondary">Non-Aktif</Badge>
                   )}
@@ -135,7 +156,7 @@ export default function ServiceManager({
             {initialServices.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6} // Update colspan jadi 6
                   className="text-center py-10 text-gray-500"
                 >
                   Belum ada service. Klik tombol tambah.
@@ -146,7 +167,7 @@ export default function ServiceManager({
         </Table>
       </div>
 
-      {/* DIALOG FORM (Modal Terbang) */}
+      {/* DIALOG FORM */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -158,10 +179,9 @@ export default function ServiceManager({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Panggil Form di dalam Modal */}
           <ServiceForm
             initialData={selectedService}
-            onSuccess={() => setIsDialogOpen(false)}
+            onSuccessAction={() => setIsDialogOpen(false)}
           />
         </DialogContent>
       </Dialog>
