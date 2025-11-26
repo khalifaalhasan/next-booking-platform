@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BookingSkeleton } from "@/components/ui/Skeleton";
 import { User } from "@supabase/supabase-js";
 import { differenceInDays, differenceInHours } from "date-fns";
-import { CheckCircle2 } from "lucide-react"; // Tambah Icon
+import { CheckCircle2, LogIn, ShieldCheck, Save } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner"; // Import Sonner
 
 // Helper format rupiah
 const formatRupiah = (num: number) =>
@@ -25,10 +27,7 @@ export default function BookingProcessPage({
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  // Unwrap params
   const { slug } = use(params);
-
-  // Ambil tanggal dari URL
   const startDateStr = searchParams.get("start");
   const endDateStr = searchParams.get("end");
 
@@ -44,11 +43,41 @@ export default function BookingProcessPage({
   const [email, setEmail] = useState("");
   const [guestName, setGuestName] = useState("");
   const [isForSelf, setIsForSelf] = useState(true);
-
-  // State Opsi Pembayaran (Fitur Baru)
   const [paymentOption, setPaymentOption] = useState<"full" | "dp">("full");
 
-  // 1. Fetch Data Service & User
+  // --- 1. FITUR PERSISTENCE (LOAD DRAFT) ---
+  useEffect(() => {
+    const loadDraft = () => {
+      if (typeof window !== "undefined") {
+        const savedData = localStorage.getItem("booking-form-draft");
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed.fullName) setFullName(parsed.fullName);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.email) setEmail(parsed.email);
+          if (parsed.guestName) setGuestName(parsed.guestName);
+          if (parsed.isForSelf !== undefined) setIsForSelf(parsed.isForSelf);
+          if (parsed.paymentOption) setPaymentOption(parsed.paymentOption);
+        }
+      }
+    };
+    loadDraft();
+  }, []);
+
+  // --- 2. FITUR PERSISTENCE (AUTO SAVE) ---
+  useEffect(() => {
+    const draft = {
+      fullName,
+      phone,
+      email,
+      guestName,
+      isForSelf,
+      paymentOption,
+    };
+    localStorage.setItem("booking-form-draft", JSON.stringify(draft));
+  }, [fullName, phone, email, guestName, isForSelf, paymentOption]);
+
+  // 3. Fetch Data Service & User
   useEffect(() => {
     const initData = async () => {
       const {
@@ -57,9 +86,11 @@ export default function BookingProcessPage({
       setUser(user);
 
       if (user) {
-        setFullName(user.user_metadata?.full_name || "");
-        setEmail(user.email || "");
-        setGuestName(user.user_metadata?.full_name || "");
+        setFullName((prev) => prev || user.user_metadata?.full_name || "");
+        setEmail((prev) => prev || user.email || "");
+        setGuestName(
+          (prev) => prev || (isForSelf ? user.user_metadata?.full_name : "")
+        );
       }
 
       const { data: serviceData } = await supabase
@@ -73,17 +104,16 @@ export default function BookingProcessPage({
     };
 
     initData();
-  }, [slug, supabase]);
+  }, [slug, supabase, isForSelf]);
 
+  // Checkbox logic sync
   useEffect(() => {
     if (isForSelf) {
       setGuestName(fullName);
-    } else {
-      setGuestName("");
     }
   }, [isForSelf, fullName]);
 
-  // Kalkulasi Harga Total (Full Price)
+  // Kalkulasi Harga
   const calculateTotal = () => {
     if (!service || !startDateStr || !endDateStr) return 0;
     const start = new Date(startDateStr);
@@ -96,27 +126,22 @@ export default function BookingProcessPage({
   };
 
   const fullPrice = calculateTotal();
-
-  // Kalkulasi Yang Harus Dibayar Sekarang (Based on Option)
   const amountToPay = paymentOption === "full" ? fullPrice : fullPrice * 0.5;
 
   // SUBMIT BOOKING
   const handleSubmit = async () => {
-    if (!user) {
-      const currentUrl = `/book/${slug}?start=${startDateStr}&end=${endDateStr}`;
-      router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`);
-      return;
-    }
+    if (!user) return;
 
     if (!fullName || !phone || !email || !guestName) {
-      alert("Mohon lengkapi semua data pemesan.");
+      toast.error("Data Belum Lengkap", {
+        description: "Mohon lengkapi nama, telepon, dan email pemesan.",
+      });
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 1. Buat Booking Utama (Status Unpaid/Partial)
       const { data, error } = await supabase
         .from("bookings")
         .insert({
@@ -124,9 +149,9 @@ export default function BookingProcessPage({
           user_id: user.id,
           start_time: new Date(startDateStr!).toISOString(),
           end_time: new Date(endDateStr!).toISOString(),
-          total_price: fullPrice, // Harga asli tetap full
+          total_price: fullPrice,
           status: "pending_payment",
-          payment_status: "unpaid", // Nanti update otomatis jadi partial/paid setelah bayar
+          payment_status: "unpaid",
           customer_name: guestName,
           customer_email: email,
           customer_phone: phone,
@@ -139,13 +164,21 @@ export default function BookingProcessPage({
 
       if (error) throw error;
 
-      // 2. Redirect ke Payment Page
-      // Kita kirim parameter tambahan 'type' agar halaman payment tahu dia harus bayar full atau DP
+      // Clear draft
+      localStorage.removeItem("booking-form-draft");
+
       router.push(`/payment/${data.id}?type=${paymentOption}`);
     } catch (err: any) {
-      alert("Gagal memproses pesanan: " + err.message);
+      toast.error("Gagal Memproses Booking", {
+        description: err.message,
+      });
       setSubmitting(false);
     }
+  };
+
+  const handleLoginRedirect = () => {
+    const currentPath = `/book/${slug}?start=${startDateStr}&end=${endDateStr}`;
+    router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
   if (loading) return <BookingSkeleton />;
@@ -154,7 +187,6 @@ export default function BookingProcessPage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 py-4 mb-8">
         <div className="container mx-auto px-4">
           <h1 className="text-xl font-bold text-gray-800">
@@ -165,10 +197,20 @@ export default function BookingProcessPage({
 
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* KOLOM KIRI */}
+          {/* KOLOM KIRI (FORM) */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Info Auto Save */}
+            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-md w-fit animate-fade-in">
+              <Save className="w-3 h-3" />
+              Data formulir tersimpan otomatis.
+            </div>
+
             {/* CARD 1: Data Pemesan */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div
+              className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${
+                !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
+              }`}
+            >
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-blue-100 p-2 rounded-full text-blue-600">
                   👤
@@ -177,18 +219,18 @@ export default function BookingProcessPage({
                   Data Pemesan
                 </h2>
               </div>
-
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Nama Lengkap (Sesuai KTP)
+                    Nama Lengkap
                   </label>
                   <input
                     type="text"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 transition"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Contoh: Budi Santoso"
+                    disabled={!user}
+                    placeholder="Sesuai KTP"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -198,10 +240,11 @@ export default function BookingProcessPage({
                     </label>
                     <input
                       type="tel"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 transition"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="08123456789"
+                      disabled={!user}
+                      placeholder="0812..."
                     />
                   </div>
                   <div>
@@ -210,9 +253,10 @@ export default function BookingProcessPage({
                     </label>
                     <input
                       type="email"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 transition"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={!user}
                       placeholder="email@contoh.com"
                     />
                   </div>
@@ -220,31 +264,30 @@ export default function BookingProcessPage({
               </div>
             </div>
 
-            {/* CARD 2: Informasi Tamu */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            {/* CARD 2: Detail Tamu */}
+            <div
+              className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${
+                !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
+              }`}
+            >
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-blue-100 p-2 rounded-full text-blue-600">
                   🏨
                 </div>
                 <h2 className="text-lg font-bold text-gray-800">Detail Tamu</h2>
               </div>
-
               <div className="mb-6 flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <input
                   type="checkbox"
-                  id="selfBooking"
                   checked={isForSelf}
                   onChange={(e) => setIsForSelf(e.target.checked)}
                   className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                  disabled={!user}
                 />
-                <label
-                  htmlFor="selfBooking"
-                  className="text-sm font-medium text-gray-700 cursor-pointer select-none"
-                >
-                  Sama dengan pemesan (Pesanan ini untuk saya)
+                <label className="text-sm font-medium text-gray-700">
+                  Sama dengan pemesan
                 </label>
               </div>
-
               {!isForSelf && (
                 <div className="animate-fade-in">
                   <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -252,14 +295,13 @@ export default function BookingProcessPage({
                   </label>
                   <input
                     type="text"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 transition"
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
-                    placeholder="Nama tamu yang akan menginap"
+                    disabled={!user}
                   />
                 </div>
               )}
-
               {isForSelf && (
                 <div className="p-4 bg-gray-50 rounded-lg text-gray-600 text-sm">
                   Tamu: <strong>{fullName || "-"}</strong>
@@ -267,8 +309,12 @@ export default function BookingProcessPage({
               )}
             </div>
 
-            {/* CARD 3: OPSI PEMBAYARAN (DP / FULL) - FITUR BARU */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            {/* CARD 3: Opsi Pembayaran */}
+            <div
+              className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${
+                !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
+              }`}
+            >
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-green-100 p-2 rounded-full text-green-600">
                   💳
@@ -277,12 +323,10 @@ export default function BookingProcessPage({
                   Opsi Pembayaran
                 </h2>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Opsi 1: Bayar Lunas */}
                 <div
                   onClick={() => setPaymentOption("full")}
-                  className={`p-4 border-2 rounded-xl cursor-pointer transition relative ${
+                  className={`p-4 border-2 rounded-xl cursor-pointer relative transition-all ${
                     paymentOption === "full"
                       ? "border-blue-600 bg-blue-50"
                       : "border-gray-200 hover:border-blue-300"
@@ -292,18 +336,13 @@ export default function BookingProcessPage({
                     <CheckCircle2 className="absolute top-4 right-4 text-blue-600 w-6 h-6" />
                   )}
                   <p className="font-bold text-gray-900">Bayar Lunas (Full)</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Bayar penuh sekarang.
-                  </p>
                   <p className="text-lg font-bold text-blue-600 mt-3">
                     {formatRupiah(fullPrice)}
                   </p>
                 </div>
-
-                {/* Opsi 2: DP 50% */}
                 <div
                   onClick={() => setPaymentOption("dp")}
-                  className={`p-4 border-2 rounded-xl cursor-pointer transition relative ${
+                  className={`p-4 border-2 rounded-xl cursor-pointer relative transition-all ${
                     paymentOption === "dp"
                       ? "border-blue-600 bg-blue-50"
                       : "border-gray-200 hover:border-blue-300"
@@ -313,9 +352,6 @@ export default function BookingProcessPage({
                     <CheckCircle2 className="absolute top-4 right-4 text-blue-600 w-6 h-6" />
                   )}
                   <p className="font-bold text-gray-900">Bayar DP 50%</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Amankan jadwal dulu.
-                  </p>
                   <p className="text-lg font-bold text-orange-600 mt-3">
                     {formatRupiah(fullPrice * 0.5)}
                   </p>
@@ -324,14 +360,13 @@ export default function BookingProcessPage({
             </div>
           </div>
 
-          {/* KOLOM KANAN: RINCIAN HARGA (Sticky) */}
+          {/* KOLOM KANAN (STICKY) */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 sticky top-8">
               <h3 className="text-lg font-bold text-gray-800 mb-4">
                 Rincian Harga
               </h3>
 
-              {/* Info Service */}
               <div className="flex gap-4 mb-4 pb-4 border-b border-gray-100">
                 {service.images?.[0] && (
                   <img
@@ -351,15 +386,14 @@ export default function BookingProcessPage({
                 </div>
               </div>
 
-              {/* Breakdown Harga */}
               <div className="space-y-3 text-sm text-gray-600 mb-6">
                 <div className="flex justify-between">
                   <span>Harga Sewa Total</span>
                   <span>{formatRupiah(fullPrice)}</span>
                 </div>
-                <div className="flex justify-between text-green-600 font-medium">
-                  <span>Opsi Bayar</span>
-                  <span>
+                <div className="flex justify-between">
+                  <span className="text-green-600 font-medium">Opsi Bayar</span>
+                  <span className="font-medium">
                     {paymentOption === "full" ? "Lunas (100%)" : "DP (50%)"}
                   </span>
                 </div>
@@ -369,14 +403,32 @@ export default function BookingProcessPage({
                 </div>
               </div>
 
-              {/* Tombol Lanjut */}
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full py-4 bg-blue-600 text-white rounded-full font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Memproses..." : "Lanjutkan Pembayaran"}
-              </button>
+              {/* LOGIKA TOMBOL */}
+              {user ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full py-4 bg-blue-600 text-white rounded-full font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:bg-gray-400 disabled:cursor-not-allowed active:scale-[0.98]"
+                >
+                  {submitting ? "Memproses..." : "Lanjutkan Pembayaran"}
+                </button>
+              ) : (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-2 items-start">
+                    <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                    <p className="text-xs text-blue-800 leading-tight">
+                      Masuk untuk menyimpan pesanan dan mendapatkan poin member.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLoginRedirect}
+                    className="w-full py-4 bg-slate-900 text-white rounded-full font-bold text-lg hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Masuk / Daftar
+                  </button>
+                </div>
+              )}
 
               <p className="text-xs text-center text-gray-400 mt-4">
                 Dengan melanjutkan, Anda menyetujui Syarat & Ketentuan kami.
