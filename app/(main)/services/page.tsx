@@ -1,4 +1,4 @@
-import ServicesPage from "@/components/Service/Service";
+import ServicesPage from "@/components/service/Service";
 
 export default function Services() {
   return <ServicesPage />;
