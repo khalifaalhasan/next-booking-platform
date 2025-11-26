@@ -111,25 +111,39 @@ export default function PaymentPage({ params }: PageProps) {
       const fileName = `${bookingId}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      // Upload Storage
+      // 1. Upload ke Storage
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      // Insert Payment Record (Sesuai nominal yang dihitung)
+      // 2. Insert ke Tabel Payments (Record Transaksi)
       const { error: insertError } = await supabase.from("payments").insert({
         booking_id: booking.id,
         user_id: user.id,
-        amount: amountToPay, // <--- PENTING: Gunakan nominal yang dihitung
+        amount: amountToPay,
         payment_type: selectedMethod,
         payment_proof_url: `receipts/${filePath}`,
-        status: "pending",
+        status: "pending", // Status pembayaran pending (menunggu admin cek uang)
       });
       if (insertError) throw insertError;
 
+      // --- PERBAIKAN UTAMA DI SINI ---
+      // 3. Update Status Booking jadi 'waiting_verification'
+      // Agar badge di dashboard berubah jadi biru (Sedang Diverifikasi)
+      const { error: updateBookingError } = await supabase
+        .from("bookings")
+        .update({
+          status: "waiting_verification",
+        })
+        .eq("id", booking.id);
+
+      if (updateBookingError) throw updateBookingError;
+      // -------------------------------
+
       alert("Pembayaran Berhasil Dikirim! Menunggu verifikasi.");
       router.push("/dashboard/mybooking");
+      router.refresh(); // Refresh agar status terbaru terambil
     } catch (err: any) {
       alert(err.message);
     } finally {

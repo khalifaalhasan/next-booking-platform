@@ -18,11 +18,17 @@ const formatRupiah = (num: number) =>
     minimumFractionDigits: 0,
   }).format(num);
 
-// Helper Translate Status
-const getStatusLabel = (status: string) => {
+// --- LOGIKA LABEL STATUS (UPDATE) ---
+const getStatusLabel = (status: string, paymentStatus: string) => {
+  // Prioritas 1: Cek jika sudah DP tapi belum lunas
+  if (paymentStatus === "partial" && status !== "cancelled") {
+    return "Menunggu Pelunasan"; // Atau "DP Diterima"
+  }
+
+  // Prioritas 2: Status bawaan
   const labels: Record<string, string> = {
     pending_payment: "Menunggu Pembayaran",
-    waiting_verification: "Menunggu Verifikasi",
+    waiting_verification: "Sedang Diverifikasi", // User sudah upload, admin cek
     confirmed: "E-Tiket Terbit",
     cancelled: "Dibatalkan",
     completed: "Selesai",
@@ -31,19 +37,24 @@ const getStatusLabel = (status: string) => {
   return labels[status] || status;
 };
 
-const getStatusColor = (status: string) => {
+// --- LOGIKA WARNA STATUS (UPDATE) ---
+const getStatusColor = (status: string, paymentStatus: string) => {
+  if (paymentStatus === "partial" && status !== "cancelled") {
+    return "bg-yellow-100 text-yellow-700 border-yellow-200"; // Kuning untuk DP
+  }
+
   switch (status) {
     case "pending_payment":
-      return "bg-orange-100 text-orange-700 hover:bg-orange-100";
+      return "bg-orange-100 text-orange-700 border-orange-200";
     case "waiting_verification":
-      return "bg-blue-100 text-blue-700 hover:bg-blue-100";
+      return "bg-blue-100 text-blue-700 border-blue-200";
     case "confirmed":
-      return "bg-green-100 text-green-700 hover:bg-green-100";
+      return "bg-green-100 text-green-700 border-green-200";
     case "cancelled":
     case "rejected":
-      return "bg-red-100 text-red-700 hover:bg-red-100";
+      return "bg-red-100 text-red-700 border-red-200";
     default:
-      return "bg-gray-100 text-gray-700 hover:bg-gray-100";
+      return "bg-gray-100 text-gray-700 border-gray-200";
   }
 };
 
@@ -214,8 +225,15 @@ function BookingItem({ booking }: any) {
               <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition line-clamp-1">
                 {booking.service?.name}
               </h3>
-              <Badge className={`${getStatusColor(booking.status)} border-0`}>
-                {getStatusLabel(booking.status)}
+
+              {/* UPDATE: Panggil fungsi dengan 2 parameter */}
+              <Badge
+                className={`${getStatusColor(
+                  booking.status,
+                  booking.payment_status
+                )} border-0`}
+              >
+                {getStatusLabel(booking.status, booking.payment_status)}
               </Badge>
             </div>
 
@@ -240,13 +258,13 @@ function BookingItem({ booking }: any) {
                 {formatRupiah(booking.total_price)}
               </span>
               {booking.payment_status === "partial" && (
-                <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded ml-2 font-medium">
-                  Belum Lunas
+                <span className="text-xs text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded ml-2 font-medium">
+                  Sudah DP
                 </span>
               )}
             </div>
 
-            {/* TOMBOL SELALU KE DETAIL (Sesuai Request) */}
+            {/* TOMBOL SELALU KE DETAIL */}
             <Link href={`/dashboard/mybooking/${booking.id}`}>
               <Button
                 size="sm"
