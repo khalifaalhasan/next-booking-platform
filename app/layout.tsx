@@ -25,7 +25,16 @@ export default function RootLayout({
         {/* DISINI TIDAK ADA NAVBAR */}
         {children}
 
-        <Toaster position="top-center" />
+        <Toaster
+          position="top-center"
+          richColors={true} // Wajib TRUE agar warna hijau/merah menyala
+          theme="light" // Wajib LIGHT agar tidak merah gelap/hitam
+          closeButton // Opsional: tombol X
+          style={{
+            // Opsional: Paksa font agar tidak ikut font aneh
+            fontFamily: "var(--font-sans)",
+          }}
+        />
       </body>
     </html>
   );
