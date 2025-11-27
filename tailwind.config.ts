@@ -1,12 +1,13 @@
 import type { Config } from "tailwindcss";
+import tailwindAnimate from "tailwindcss-animate"; // 1. Ganti require dengan import
 
 const config = {
-  darkMode: ["class"], // Penting untuk shadcn
+  darkMode: "class", // 2. Ubah ["class"] menjadi string "class"
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {
@@ -74,7 +75,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")], // Ini plugin penyebab error tadi
+  plugins: [tailwindAnimate], // 3. Gunakan variable import tadi
 } satisfies Config;
 
 export default config;
