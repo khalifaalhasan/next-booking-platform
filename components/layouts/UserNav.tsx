@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Hapus useCallback biar simple
+import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,12 +9,13 @@ import {
   LogOut,
   CalendarDays,
   LayoutDashboard,
-  BadgeCheck,
-  BadgeAlert,
-  Send,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles,
+  User as UserIcon,
+  Loader2,
+  MailWarning,
 } from "lucide-react";
-
-import AuthDialog from "@/components/auth/AuthDialog";
 
 import {
   DropdownMenu,
@@ -26,6 +27,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner"; // Opsional: Untuk notifikasi lebih cantik
+import LoginTrigger from "../auth/LoginTrigger"; // Sesuaikan path jika perlu
 
 export default function UserNav() {
   const router = useRouter();
@@ -35,10 +39,10 @@ export default function UserNav() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [resending, setResending] = useState(false);
 
+  // --- LOGIC (Sama seperti sebelumnya) ---
   useEffect(() => {
-    // Logic terpisah untuk cek Profile (Admin/Verified)
-    // Ini jalan di background agar tidak memblokir tampilan Avatar
     const fetchProfileData = async (userId: string) => {
       try {
         const { data: profile } = await supabase
@@ -56,20 +60,13 @@ export default function UserNav() {
 
     const initSession = async () => {
       try {
-        // 1. Ambil User Auth (Cepat)
         const {
           data: { user: authUser },
         } = await supabase.auth.getUser();
-
         if (authUser) {
           setUser(authUser);
-          // Set verified status langsung dari metadata auth (Cepat)
           setIsVerified(!!authUser.email_confirmed_at);
-
-          // STOP LOADING SEKARANG! Jangan tunggu DB profile.
           setLoading(false);
-
-          // 2. Baru cek DB Profile (Lambat/Async)
           fetchProfileData(authUser.id);
         } else {
           setUser(null);
@@ -83,14 +80,13 @@ export default function UserNav() {
 
     initSession();
 
-    // Listener Realtime
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user);
         setIsVerified(!!session.user.email_confirmed_at);
-        setLoading(false); // Pastikan loading mati saat auth state berubah
+        setLoading(false);
         fetchProfileData(session.user.id);
       } else {
         setUser(null);
@@ -108,24 +104,37 @@ export default function UserNav() {
     window.location.href = "/";
   };
 
-  const resendVerification = async () => {
+  const resendVerification = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!user?.email) return;
+
+    setResending(true);
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: user.email,
     });
-    if (error) alert(error.message);
-    else alert("Email verifikasi dikirim ulang!");
+
+    setResending(false);
+
+    if (error) {
+      toast.error("Gagal mengirim email", { description: error.message });
+    } else {
+      toast.success("Email Terkirim!", {
+        description: "Cek inbox/spam email Anda.",
+      });
+    }
   };
 
   // --- RENDER ---
 
   if (loading) {
-    return <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />;
+    return (
+      <div className="w-10 h-10 rounded-full bg-slate-100 animate-pulse border border-slate-200" />
+    );
   }
 
   if (!user) {
-    return <AuthDialog />;
+    return <LoginTrigger mode="desktop" />;
   }
 
   const initials = user.email?.substring(0, 2).toUpperCase() || "U";
@@ -134,81 +143,137 @@ export default function UserNav() {
   return (
     <DropdownMenu>
       {/* Trigger Button */}
-      <DropdownMenuTrigger className="relative rounded-full outline-none transition-opacity hover:opacity-80 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-        <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
-          <AvatarImage src={avatarUrl} alt={user.email || ""} />
-          <AvatarFallback className="bg-blue-600 text-white font-bold">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 rounded-full p-0 overflow-hidden border border-slate-200 hover:ring-2 hover:ring-blue-100 transition-all focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <Avatar className="h-full w-full">
+            <AvatarImage
+              src={avatarUrl}
+              alt={user.email || ""}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold text-sm">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
       </DropdownMenuTrigger>
 
       {/* Dropdown Content */}
-      <DropdownMenuContent className="w-64 z-[100]" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium leading-none truncate max-w-[150px]">
-                {user.user_metadata?.full_name || "Pengguna"}
-              </p>
-              {isVerified ? (
-                <BadgeCheck className="h-4 w-4 text-blue-500" />
-              ) : (
-                <BadgeAlert className="h-4 w-4 text-orange-500" />
-              )}
-            </div>
-            <p className="text-xs leading-none text-muted-foreground truncate">
+      <DropdownMenuContent
+        className="w-72 z-[100] p-0 rounded-xl shadow-xl border-slate-100 mt-2"
+        align="end"
+        forceMount
+      >
+        {/* SECTION 1: USER INFO HEADER */}
+        <div className="bg-slate-50/80 p-4 border-b border-slate-100 flex items-center gap-3">
+          <Avatar className="h-10 w-10 border border-white shadow-sm">
+            <AvatarImage src={avatarUrl} />
+            <AvatarFallback className="bg-blue-600 text-white text-xs">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-bold text-slate-800 truncate">
+              {user.user_metadata?.full_name || "Pengguna"}
+            </span>
+            <span className="text-xs text-slate-500 truncate font-medium">
               {user.email}
-            </p>
-
-            {!isVerified && (
-              <div className="mt-2 p-2 bg-orange-50 rounded border border-orange-100">
-                <p className="text-[10px] text-orange-700 mb-1">
-                  Email belum diverifikasi.
-                </p>
-                <button
-                  onClick={resendVerification}
-                  className="text-[10px] flex items-center text-blue-600 hover:underline font-bold"
-                >
-                  <Send className="h-3 w-3 mr-1" /> Kirim Ulang Link
-                </button>
-              </div>
-            )}
+            </span>
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </div>
 
-        <DropdownMenuGroup>
-          {/* Perbaikan Link ke route yang benar */}
-          <Link href="/dashboard/mybooking">
-            <DropdownMenuItem className="cursor-pointer">
-              <CalendarDays className="mr-2 h-4 w-4" />
-              <span>Pesanan Saya</span>
-            </DropdownMenuItem>
-          </Link>
-        </DropdownMenuGroup>
-
-        {isAdmin && (
-          <>
-            <DropdownMenuSeparator />
-            <Link href="/admin/bookings">
-              <DropdownMenuItem className="cursor-pointer bg-slate-50 font-bold text-slate-700">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Admin Dashboard</span>
-              </DropdownMenuItem>
-            </Link>
-          </>
+        {/* SECTION 2: VERIFICATION BANNER (Jika belum verif) */}
+        {!isVerified && (
+          <div className="bg-amber-50 px-4 py-2 flex flex-col gap-1 border-b border-amber-100">
+            <div className="flex items-center gap-2 text-amber-700">
+              <MailWarning className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                Akun Belum Aktif
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] text-amber-600 leading-tight pr-2">
+                Silakan cek email untuk verifikasi.
+              </p>
+              <button
+                onClick={resendVerification}
+                disabled={resending}
+                className="text-[10px] font-bold text-amber-700 bg-amber-200/50 px-2 py-1 rounded hover:bg-amber-200 transition disabled:opacity-50"
+              >
+                {resending ? "Mengirim..." : "Kirim Ulang"}
+              </button>
+            </div>
+          </div>
         )}
 
-        <DropdownMenuSeparator />
+        {/* SECTION 3: MENU ITEMS */}
+        <div className="p-2">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="text-xs text-slate-400 font-normal px-2 py-1 uppercase tracking-wider">
+              Akun Saya
+            </DropdownMenuLabel>
 
-        <DropdownMenuItem
-          onClick={handleLogout}
-          className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Keluar</span>
-        </DropdownMenuItem>
+            {/* Admin Menu (Hanya muncul jika admin) */}
+            {isAdmin && (
+              <Link href="/admin/bookings">
+                <DropdownMenuItem className="cursor-pointer mb-1 bg-blue-50 text-blue-700 focus:bg-blue-100 focus:text-blue-800 font-medium">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>Admin Dashboard</span>
+                  <Sparkles className="ml-auto h-3 w-3 text-blue-500" />
+                </DropdownMenuItem>
+              </Link>
+            )}
+
+            <Link href="/dashboard/mybooking">
+              <DropdownMenuItem className="cursor-pointer h-10 focus:bg-slate-50">
+                <CalendarDays className="mr-2 h-4 w-4 text-slate-500" />
+                <span>Pesanan Saya</span>
+              </DropdownMenuItem>
+            </Link>
+
+            {/* Placeholder Profile (Bisa diaktifkan nanti) */}
+            <DropdownMenuItem
+              className="cursor-pointer h-10 focus:bg-slate-50"
+              disabled
+            >
+              <UserIcon className="mr-2 h-4 w-4 text-slate-500" />
+              <span>Profil & Pengaturan</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator className="my-2 bg-slate-100" />
+
+          {/* SECTION 4: LOGOUT */}
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 h-10 font-medium"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Keluar Aplikasi</span>
+          </DropdownMenuItem>
+        </div>
+
+        {/* SECTION 5: FOOTER INFO */}
+        <div className="bg-slate-50 p-2 text-center border-t border-slate-100 rounded-b-xl">
+          <div className="flex justify-center items-center gap-1.5 text-[10px] text-slate-400">
+            {isVerified ? (
+              <>
+                <ShieldCheck className="w-3 h-3 text-green-500" />
+                <span className="text-green-600 font-medium">
+                  Akun Terverifikasi
+                </span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="w-3 h-3 text-amber-500" />
+                <span>Keamanan Terbatas</span>
+              </>
+            )}
+          </div>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
