@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation"; // 1. IMPORT USEROUTER
+import { useRouter } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -39,7 +39,7 @@ interface AuthDialogProps {
 }
 
 export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
-  const router = useRouter(); // 2. INISIALISASI ROUTER
+  const router = useRouter();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
   // State UI
   const [activeTab, setActiveTab] = useState("login");
-  const [isRegisterSuccess, setIsRegisterSuccess] = useState(false);
+  const [isRegisterSuccess, setIsRegisterSuccess] = useState(false); // Fallback visual jika needed
 
   // Form State
   const [email, setEmail] = useState("");
@@ -79,7 +79,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     }
   };
 
-  // --- HANDLER EMAIL LOGIN (YANG DIPERBAIKI) ---
+  // --- HANDLER LOGIN EMAIL ---
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -98,36 +98,52 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       );
       setLoading(false);
     } else {
-      // 3. STEP PENTING: REFRESH SERVER COMPONENT
       toast.success("Berhasil Masuk");
       onOpenChange(false); // Tutup dialog
-      router.refresh(); // <--- INI AKAN UPDATE NAVBAR OTOMATIS
+      router.refresh(); // Refresh Server Component (Navbar)
       setLoading(false);
       resetForm();
     }
   };
 
+  // --- HANDLER REGISTER (UPDATE METADATA) ---
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${location.origin}/auth/callback`,
+        data: {
+          full_name: fullName,
+          // PENTING: Set default belum terverifikasi secara custom
+          email_verified_custom: false,
+        },
       },
     });
 
     if (error) {
       setErrorMsg(error.message);
       setLoading(false);
-    } else {
-      setIsRegisterSuccess(true);
-      setLoading(false);
+      return;
     }
+
+    // Jika Supabase dikonfigurasi "Confirm Email" = OFF, session akan langsung ada
+    if (data.session) {
+      toast.success("Pendaftaran Berhasil!", {
+        description: "Selamat datang di Pusat Bisnis.",
+      });
+      onOpenChange(false); // Tutup dialog
+      router.refresh(); // Refresh agar Avatar muncul di Navbar
+      resetForm();
+    } else {
+      // Jika ternyata Supabase masih minta konfirmasi email (Konfigurasi belum diubah)
+      setIsRegisterSuccess(true);
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -147,6 +163,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         </div>
 
         <div className="p-6 pt-4">
+          {/* Tampilan Sukses Register (Hanya muncul jika Confirm Email ON) */}
           {isRegisterSuccess ? (
             <div className="flex flex-col items-center text-center py-4 animate-in fade-in zoom-in duration-300">
               <div className="bg-green-100 p-4 rounded-full mb-4">
@@ -205,6 +222,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                   <TabsTrigger value="register">Daftar</TabsTrigger>
                 </TabsList>
 
+                {/* --- TAB LOGIN --- */}
                 <TabsContent value="login" className="mt-0">
                   <form onSubmit={onLogin} className="space-y-4">
                     {errorMsg && (
@@ -253,6 +271,7 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                   </form>
                 </TabsContent>
 
+                {/* --- TAB REGISTER --- */}
                 <TabsContent value="register" className="mt-0">
                   <form onSubmit={onRegister} className="space-y-4">
                     {errorMsg && (
