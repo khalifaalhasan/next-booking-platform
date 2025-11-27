@@ -23,6 +23,15 @@ type BookingWithService = Tables<"bookings"> & {
   service: Tables<"services"> | null;
 };
 
+interface PaymentOptionProps {
+  id: string;
+  title: string;
+  icon: React.ReactNode; // Tipe untuk element React (seperti icon Lucide)
+  selected: string;
+  onSelect: (value: string) => void; // Function yang menerima string
+  logo: string;
+}
+
 export default function PaymentPage({ params }: PageProps) {
   const router = useRouter();
   const searchParams = useSearchParams(); // Hook untuk ambil ?type=...
@@ -117,20 +126,18 @@ export default function PaymentPage({ params }: PageProps) {
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      // 2. Insert ke Tabel Payments (Record Transaksi)
+      // 2. Insert ke Tabel Payments
       const { error: insertError } = await supabase.from("payments").insert({
         booking_id: booking.id,
         user_id: user.id,
         amount: amountToPay,
         payment_type: selectedMethod,
         payment_proof_url: `receipts/${filePath}`,
-        status: "pending", // Status pembayaran pending (menunggu admin cek uang)
+        status: "pending",
       });
       if (insertError) throw insertError;
 
-      // --- PERBAIKAN UTAMA DI SINI ---
-      // 3. Update Status Booking jadi 'waiting_verification'
-      // Agar badge di dashboard berubah jadi biru (Sedang Diverifikasi)
+      // 3. Update Status Booking
       const { error: updateBookingError } = await supabase
         .from("bookings")
         .update({
@@ -139,13 +146,22 @@ export default function PaymentPage({ params }: PageProps) {
         .eq("id", booking.id);
 
       if (updateBookingError) throw updateBookingError;
-      // -------------------------------
 
       alert("Pembayaran Berhasil Dikirim! Menunggu verifikasi.");
       router.push("/dashboard/mybooking");
-      router.refresh(); // Refresh agar status terbaru terambil
-    } catch (err: any) {
-      alert(err.message);
+      router.refresh();
+    } catch (err: unknown) {
+      // --- PERBAIKAN: Gunakan unknown ---
+      let message = "Terjadi kesalahan saat upload.";
+
+      // Type Narrowing: Cek apakah error adalah Error object
+      if (err instanceof Error) {
+        message = err.message;
+      } else if (typeof err === "string") {
+        message = err;
+      }
+
+      alert(message);
     } finally {
       setUploading(false);
     }
@@ -436,7 +452,13 @@ export default function PaymentPage({ params }: PageProps) {
 }
 
 // --- SUB KOMPONEN ---
-function PaymentOption({ id, title, icon, selected, onSelect, logo }: any) {
+function PaymentOption({
+  id,
+  title,
+  selected,
+  onSelect,
+  logo,
+}: PaymentOptionProps) {
   const isSelected = selected === id;
   return (
     <div
