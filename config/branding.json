@@ -1,0 +1,33 @@
+{
+  "brand": {
+    "name": "Pusat Pengembangan Bisnis",
+    "shortName": "Pusat Bisnis",
+    "tagline": "Aselerasi Pertumbuhan Bisnis Anda",
+    "description": "Platform terintegrasi untuk penyewaan aset, layanan bisnis, dan pengembangan UMKM.",
+    "email": "info@pusatbisnis.id",
+    "phone": "+6281234567890",
+    "address": "Jl. Sudirman No. 123, Jakarta Selatan"
+  },
+  "socials": {
+    "instagram": {
+      "url": "https://instagram.com/pusatbisnis",
+      "username": "@pusatbisnis"
+    },
+    "facebook": {
+      "url": "https://facebook.com/pusatbisnis",
+      "username": "Pusat Pengembangan Bisnis"
+    },
+    "whatsapp": {
+      "url": "https://wa.me/6281234567890",
+      "label": "Chat WhatsApp"
+    },
+    "tiktok": {
+      "url": "https://tiktok.com/@pusatbisnis",
+      "username": "@pusatbisnis"
+    }
+  },
+  "colors": {
+    "primary": "blue-600",
+    "secondary": "slate-900"
+  }
+}
