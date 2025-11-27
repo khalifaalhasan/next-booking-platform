@@ -69,10 +69,12 @@ export async function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 font-sans">
-      <div className="container mx-auto px-4 h-16">
-        <div className="flex items-center justify-between h-full gap-2">
+      {/* --- BARIS 1: UTAMA --- */}
+      {/* PERBAIKAN LAYOUT: Gunakan max-w-7xl dan padding responsif */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+        <div className="flex items-center justify-between h-full gap-4">
           {/* --- BAGIAN KIRI: HAMBURGER & LOGO --- */}
-          <div className="flex items-center gap-2 md:gap-6 flex-1 md:flex-none">
+          <div className="flex items-center gap-3 lg:gap-8 flex-1 md:flex-none">
             {/* 1. MOBILE MENU (SHEET) */}
             <Sheet>
               <SheetTrigger asChild>
@@ -85,20 +87,13 @@ export async function Navbar() {
                 </Button>
               </SheetTrigger>
 
-              {/* PERBAIKAN LAYOUT SHEET CONTENT */}
+              {/* ISI MENU MOBILE */}
               <SheetContent
                 side="left"
-                // 1. h-full: Paksa tinggi penuh
-                // 2. flex-col: Susun ke bawah
-                // 3. Hapus overflow-y-auto dari sini (pindah ke nav)
                 className="w-[85vw] sm:w-[350px] p-0 flex flex-col h-full border-r-0 gap-0 bg-white"
               >
                 {/* HEADER MENU (FIXED TOP) */}
-                <div
-                  // 1. shrink-0: PENTING! Agar header tidak gepeng didesak menu
-                  // 2. pt-20: Memberi jarak aman untuk tombol Close (X)
-                  className="bg-gradient-to-br from-blue-700 to-blue-500 p-6 pt-20 text-white relative overflow-hidden shrink-0 z-10"
-                >
+                <div className="bg-gradient-to-br from-blue-700 to-blue-500 p-6 pt-20 text-white relative overflow-hidden shrink-0 z-10">
                   <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                     <Building2 className="w-32 h-32 text-white" />
                   </div>
@@ -136,11 +131,7 @@ export async function Navbar() {
                 </div>
 
                 {/* NAVIGATION LINKS (SCROLLABLE AREA) */}
-                <nav
-                  // 1. flex-1: Mengambil sisa ruang yang ada
-                  // 2. overflow-y-auto: Scroll hanya terjadi di area ini
-                  className="flex-1 overflow-y-auto p-2 space-y-1 bg-slate-50/50"
-                >
+                <nav className="flex-1 overflow-y-auto p-2 space-y-1 bg-slate-50/50">
                   <p className="px-4 pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     Menu Utama
                   </p>
@@ -291,7 +282,7 @@ export async function Navbar() {
           {/* --- BAGIAN KANAN: MENU (DESKTOP) & LOGIN (RESPONSIVE) --- */}
           <div className="flex items-center gap-3 md:gap-6 shrink-0">
             {/* MENU UTAMA (Desktop Only) */}
-            <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-slate-600">
+            <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
               <Link href="/" className="hover:text-blue-600 transition">
                 Home
               </Link>
@@ -333,13 +324,18 @@ export async function Navbar() {
 
       {/* --- MEGA MENU (DESKTOP) --- */}
       <div className="hidden md:block border-t border-gray-100 bg-white relative z-40">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-1">
+        {/* PERBAIKAN LAYOUT MEGA MENU: max-w-7xl dan padding yang sama */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Ganti gap-1 dengan gap-8 agar lebih lega */}
+          <div className="flex items-center gap-8 h-12">
             {validCategories.map((category) => (
-              <div key={category.id} className="group relative">
+              <div
+                key={category.id}
+                className="group relative h-full flex items-center"
+              >
                 <Link
                   href={`/services?category=${category.slug}`}
-                  className="flex items-center h-12 px-5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition-all cursor-pointer gap-2"
+                  className="flex items-center text-sm font-medium text-slate-600 hover:text-blue-600 transition-all cursor-pointer gap-2"
                 >
                   <span className="text-base opacity-70 group-hover:opacity-100 transition">
                     {category.icon || "📂"}
@@ -347,8 +343,8 @@ export async function Navbar() {
                   {category.name}
                   <ChevronDown className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180 text-slate-400 group-hover:text-blue-600 ml-1" />
                 </Link>
-                <div className="absolute left-0 top-full pt-1 invisible opacity-0 -translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
-                  <div className="w-[600px] bg-white rounded-xl shadow-2xl border border-gray-100 p-2 grid grid-cols-12 gap-0 overflow-hidden mt-0">
+                <div className="absolute left-0 top-full pt-0 invisible opacity-0 -translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
+                  <div className="w-[600px] bg-white rounded-xl shadow-2xl border border-gray-100 p-2 grid grid-cols-12 gap-0 overflow-hidden mt-2">
                     <div className="col-span-4 bg-slate-50 p-5 flex flex-col justify-between rounded-l-lg border-r border-slate-100">
                       <div>
                         <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center text-3xl mb-4">
