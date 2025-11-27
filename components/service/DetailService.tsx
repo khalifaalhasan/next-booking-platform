@@ -12,23 +12,19 @@ type ServiceWithCategory = Tables<"services"> & {
 };
 
 // 2. Definisikan Props secara eksplisit
-// Kita gunakan 'any' dulu di params untuk debugging, lalu kita casting manual
 export default async function ServiceDetailPage(props: {
   params: Promise<{ slug: string }>;
 }) {
   const supabase = await createClient();
 
-  // --- PERBAIKAN UTAMA DI SINI ---
-  // 1. Tunggu props.params (untuk Next.js 15)
+  // Tunggu params (Next.js 15)
   const params = await props.params;
 
-  // 2. Cek apakah slug ada
   if (!params || !params.slug) {
     return notFound();
   }
 
   const { slug } = params;
-  // -------------------------------
 
   // A. Fetch Service
   const { data: serviceData, error } = await supabase
@@ -49,9 +45,10 @@ export default async function ServiceDetailPage(props: {
   const service = serviceData as unknown as ServiceWithCategory;
 
   // B. Fetch Bookings
+  // PERBAIKAN 1: Ubah select jadi "*" agar tipe datanya lengkap sesuai yang diminta ServiceHeader
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("start_time, end_time")
+    .select("*")
     .eq("service_id", service.id)
     .in("status", ["confirmed", "waiting_verification"])
     .gte("end_time", new Date().toISOString());
@@ -190,7 +187,8 @@ export default async function ServiceDetailPage(props: {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
                   {Object.entries(
-                    service.specifications as Record<string, any>
+                    // PERBAIKAN 2: Ganti 'any' dengan tipe primitive
+                    service.specifications as Record<string, string | number>
                   ).map(([key, value]) => (
                     <div
                       key={key}
@@ -225,13 +223,15 @@ export default async function ServiceDetailPage(props: {
               </div>
               <div className="space-y-4">
                 <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 italic">
-                  "Pelayanan sangat ramah, tempat bersih."{" "}
+                  {/* PERBAIKAN 3: Escape tanda kutip */}
+                  &quot;Pelayanan sangat ramah, tempat bersih.&quot;{" "}
                   <div className="mt-2 text-xs text-gray-400 font-bold not-italic">
                     - Budi Santoso
                   </div>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 italic">
-                  "Harga sangat worth it."{" "}
+                  {/* PERBAIKAN 4: Escape tanda kutip */}
+                  &quot;Harga sangat worth it.&quot;{" "}
                   <div className="mt-2 text-xs text-gray-400 font-bold not-italic">
                     - Siti Aminah
                   </div>
