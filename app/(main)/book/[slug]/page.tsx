@@ -7,10 +7,12 @@ import { BookingSkeleton } from "@/components/ui/Skeleton";
 import { User } from "@supabase/supabase-js";
 import { differenceInDays, differenceInHours } from "date-fns";
 import { CheckCircle2, LogIn, ShieldCheck, Save } from "lucide-react";
-import Link from "next/link";
-import { toast } from "sonner"; // Import Sonner
+import { toast } from "sonner";
+import AuthDialog from "@/components/auth/AuthDialog"; // <--- IMPORT BARU
 
-// Helper format rupiah
+import { Tables } from "@/types/supabase";
+
+// ... (Helper formatRupiah tetap sama)
 const formatRupiah = (num: number) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -32,10 +34,13 @@ export default function BookingProcessPage({
   const endDateStr = searchParams.get("end");
 
   // State Data
-  const [service, setService] = useState<any>(null);
+  const [service, setService] = useState<Tables<"services"> | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // State Dialog Login
+  const [isAuthOpen, setIsAuthOpen] = useState(false); // <--- STATE BARU
 
   // State Form Input
   const [fullName, setFullName] = useState("");
@@ -46,6 +51,7 @@ export default function BookingProcessPage({
   const [paymentOption, setPaymentOption] = useState<"full" | "dp">("full");
 
   // --- 1. FITUR PERSISTENCE (LOAD DRAFT) ---
+  // ... (Kode sama persis) ...
   useEffect(() => {
     const loadDraft = () => {
       if (typeof window !== "undefined") {
@@ -65,6 +71,7 @@ export default function BookingProcessPage({
   }, []);
 
   // --- 2. FITUR PERSISTENCE (AUTO SAVE) ---
+  // ... (Kode sama persis) ...
   useEffect(() => {
     const draft = {
       fullName,
@@ -77,22 +84,17 @@ export default function BookingProcessPage({
     localStorage.setItem("booking-form-draft", JSON.stringify(draft));
   }, [fullName, phone, email, guestName, isForSelf, paymentOption]);
 
-  // 3. Fetch Data Service & User
+  // --- 3. LOGIC AUTH LISTENER & DATA FETCHING (DIPERBARUI) ---
   useEffect(() => {
     const initData = async () => {
+      // Fetch User Awal
       const {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
+      fillUserData(user); // Isi form jika user ada
 
-      if (user) {
-        setFullName((prev) => prev || user.user_metadata?.full_name || "");
-        setEmail((prev) => prev || user.email || "");
-        setGuestName(
-          (prev) => prev || (isForSelf ? user.user_metadata?.full_name : "")
-        );
-      }
-
+      // Fetch Service
       const { data: serviceData } = await supabase
         .from("services")
         .select("*")
@@ -104,7 +106,38 @@ export default function BookingProcessPage({
     };
 
     initData();
-  }, [slug, supabase, isForSelf]);
+
+    // --- REALTIME AUTH LISTENER ---
+    // Ini kuncinya: mendeteksi login dari Dialog tanpa refresh
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setUser(session.user);
+        fillUserData(session.user);
+        setIsAuthOpen(false); // Tutup dialog jika sukses login
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [slug, supabase]);
+
+  // Helper mengisi form dari user data
+  const fillUserData = (currentUser: User | null) => {
+    if (currentUser) {
+      setFullName((prev) => prev || currentUser.user_metadata?.full_name || "");
+      setEmail((prev) => prev || currentUser.email || "");
+      if (isForSelf) {
+        setGuestName(
+          (prev) => prev || currentUser.user_metadata?.full_name || ""
+        );
+      }
+    }
+  };
 
   // Checkbox logic sync
   useEffect(() => {
@@ -114,6 +147,7 @@ export default function BookingProcessPage({
   }, [isForSelf, fullName]);
 
   // Kalkulasi Harga
+  // ... (Kode sama persis) ...
   const calculateTotal = () => {
     if (!service || !startDateStr || !endDateStr) return 0;
     const start = new Date(startDateStr);
@@ -129,8 +163,9 @@ export default function BookingProcessPage({
   const amountToPay = paymentOption === "full" ? fullPrice : fullPrice * 0.5;
 
   // SUBMIT BOOKING
+  // ... (Kode sama persis) ...
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user || !service) return;
 
     if (!fullName || !phone || !email || !guestName) {
       toast.error("Data Belum Lengkap", {
@@ -168,17 +203,16 @@ export default function BookingProcessPage({
       localStorage.removeItem("booking-form-draft");
 
       router.push(`/payment/${data.id}?type=${paymentOption}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      let message = "Terjadi Kesalahan pada sistem";
+      if (err instanceof Error) {
+        message = err.message;
+      }
       toast.error("Gagal Memproses Booking", {
-        description: err.message,
+        description: message,
       });
       setSubmitting(false);
     }
-  };
-
-  const handleLoginRedirect = () => {
-    const currentPath = `/book/${slug}?start=${startDateStr}&end=${endDateStr}`;
-    router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
   if (loading) return <BookingSkeleton />;
@@ -187,7 +221,11 @@ export default function BookingProcessPage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Component Dialog (Invisible unless triggered) */}
+      <AuthDialog open={isAuthOpen} onOpenChange={setIsAuthOpen} />
+
       <div className="bg-white shadow-sm border-b border-gray-200 py-4 mb-8">
+        {/* ... Header Content ... */}
         <div className="container mx-auto px-4">
           <h1 className="text-xl font-bold text-gray-800">
             Booking: {service.name}
@@ -197,9 +235,9 @@ export default function BookingProcessPage({
 
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* KOLOM KIRI (FORM) */}
+          {/* KOLOM KIRI */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Info Auto Save */}
+            {/* Info Auto Save & Card User Data ... (Sama persis dengan kodemu sebelumnya) */}
             <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-md w-fit animate-fade-in">
               <Save className="w-3 h-3" />
               Data formulir tersimpan otomatis.
@@ -211,6 +249,7 @@ export default function BookingProcessPage({
                 !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
               }`}
             >
+              {/* ... Isi Form Data Pemesan ... */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-blue-100 p-2 rounded-full text-blue-600">
                   👤
@@ -264,12 +303,13 @@ export default function BookingProcessPage({
               </div>
             </div>
 
-            {/* CARD 2: Detail Tamu */}
+            {/* CARD 2: Detail Tamu ... (Sama persis) */}
             <div
               className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${
                 !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
               }`}
             >
+              {/* ... Isi Detail Tamu ... */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="bg-blue-100 p-2 rounded-full text-blue-600">
                   🏨
@@ -309,7 +349,7 @@ export default function BookingProcessPage({
               )}
             </div>
 
-            {/* CARD 3: Opsi Pembayaran */}
+            {/* CARD 3: Opsi Pembayaran ... (Sama persis) */}
             <div
               className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${
                 !user ? "opacity-50 pointer-events-none grayscale-[0.5]" : ""
@@ -367,6 +407,7 @@ export default function BookingProcessPage({
                 Rincian Harga
               </h3>
 
+              {/* ... Detail Service & Harga ... */}
               <div className="flex gap-4 mb-4 pb-4 border-b border-gray-100">
                 {service.images?.[0] && (
                   <img
@@ -403,7 +444,7 @@ export default function BookingProcessPage({
                 </div>
               </div>
 
-              {/* LOGIKA TOMBOL */}
+              {/* TOMBOL LOGIC DIUBAH DISINI */}
               {user ? (
                 <button
                   onClick={handleSubmit}
@@ -420,8 +461,10 @@ export default function BookingProcessPage({
                       Masuk untuk menyimpan pesanan dan mendapatkan poin member.
                     </p>
                   </div>
+
+                  {/* BUTTON TRIGGER DIALOG (Bukan Redirect) */}
                   <button
-                    onClick={handleLoginRedirect}
+                    onClick={() => setIsAuthOpen(true)} // <--- TRIGGER OPEN DIALOG
                     className="w-full py-4 bg-slate-900 text-white rounded-full font-bold text-lg hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 active:scale-[0.98]"
                   >
                     <LogIn className="w-5 h-5" />
