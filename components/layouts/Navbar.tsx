@@ -1,4 +1,7 @@
+"use client"; // Ubah jadi Client Component untuk usePathname
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import branding from "@/config/branding.json";
 import {
   Menu,
@@ -30,7 +33,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/client";
+import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
 
 // Tipe Data
 type ServiceLite = {
@@ -47,31 +52,78 @@ type CategoryWithServices = {
   services: ServiceLite[];
 };
 
-export async function Navbar() {
-  const supabase = await createClient();
+export function Navbar() {
+  const pathname = usePathname();
+  const supabase = createClient();
 
-  // 1. Fetch Data Kategori
-  const { data } = await supabase
-    .from("categories")
-    .select(`id, name, slug, icon, services ( id, name, slug )`)
-    .order("name");
+  // State untuk Client Side Fetching (karena navbar jadi client component)
+  const [categories, setCategories] = useState<CategoryWithServices[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  const categories = (data as unknown as CategoryWithServices[]) || [];
+  useEffect(() => {
+    // Fetch Categories
+    const getCategories = async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select(`id, name, slug, icon, services ( id, name, slug )`)
+        .order("name");
+      if (data) setCategories(data as unknown as CategoryWithServices[]);
+    };
+
+    // Fetch User
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+
+    getCategories();
+    getUser();
+
+    // Auth Listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    // Scroll Listener untuk Shadow Effect
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      authListener.subscription.unsubscribe();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [supabase]);
+
   const validCategories = categories.filter(
     (cat) => cat.services && cat.services.length > 0
   );
 
-  // 2. Fetch User
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const initials = user?.email?.substring(0, 2).toUpperCase() || "U";
 
+  // Helper Class untuk Active Link
+  const getLinkClass = (path: string) => {
+    const isActive = pathname === path;
+    return `relative text-sm font-medium transition-colors duration-300 hover:text-blue-600 
+      ${isActive ? "text-blue-600 font-bold" : "text-slate-600"}
+      after:content-[''] after:absolute after:left-0 after:bottom-[-4px] after:h-[2px] after:bg-blue-600 after:transition-all after:duration-300
+      ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}
+    `;
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 font-sans">
+    // PERBAIKAN 1: Background Solid Putih (Hapus backdrop-blur)
+    <header
+      className={`sticky top-0 z-50 w-full bg-white border-b transition-all duration-300 ${
+        isScrolled ? "border-gray-200 shadow-sm" : "border-transparent"
+      }`}
+    >
       {/* --- BARIS 1: UTAMA --- */}
-      {/* PERBAIKAN LAYOUT: Gunakan max-w-7xl dan padding responsif */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20">
         <div className="flex items-center justify-between h-full gap-4">
           {/* --- BAGIAN KIRI: HAMBURGER & LOGO --- */}
           <div className="flex items-center gap-3 lg:gap-8 flex-1 md:flex-none">
@@ -92,8 +144,8 @@ export async function Navbar() {
                 side="left"
                 className="w-[85vw] sm:w-[350px] p-0 flex flex-col h-full border-r-0 gap-0 bg-white"
               >
-                {/* HEADER MENU (FIXED TOP) */}
-                <div className="bg-gradient-to-br from-blue-700 to-blue-500 p-6 pt-20 text-white relative overflow-hidden shrink-0 z-10">
+                {/* HEADER MENU MOBILE */}
+                <div className="bg-gradient-to-br from-blue-700 to-blue-600 p-6 pt-20 text-white relative overflow-hidden shrink-0 z-10 shadow-lg">
                   <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                     <Building2 className="w-32 h-32 text-white" />
                   </div>
@@ -130,33 +182,41 @@ export async function Navbar() {
                   )}
                 </div>
 
-                {/* NAVIGATION LINKS (SCROLLABLE AREA) */}
+                {/* NAVIGATION LINKS MOBILE */}
                 <nav className="flex-1 overflow-y-auto p-2 space-y-1 bg-slate-50/50">
-                  <p className="px-4 pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Menu Utama
-                  </p>
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mx-2">
+                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mx-2 mt-4">
                     <SheetClose asChild>
                       <Link
                         href="/"
-                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50"
+                        className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium border-b border-slate-50 ${
+                          pathname === "/"
+                            ? "text-blue-600 bg-blue-50/50"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
                       >
                         <Home className="h-5 w-5 text-blue-500" /> Home
                       </Link>
                     </SheetClose>
-                    <SheetClose asChild>
-                      <Link
-                        href="/promo"
-                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50"
-                      >
-                        <TicketPercent className="h-5 w-5 text-red-500" /> Promo
-                        Spesial
-                      </Link>
-                    </SheetClose>
+
+                    {/* PROMO (Coming Soon Mode) */}
+                    <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-50 opacity-70 cursor-not-allowed">
+                      <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
+                        <TicketPercent className="h-5 w-5 text-slate-400" />{" "}
+                        Promo
+                      </div>
+                      <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200">
+                        SOON
+                      </span>
+                    </div>
+
                     <SheetClose asChild>
                       <Link
                         href="/blog"
-                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 text-slate-700 text-sm font-medium border-b border-slate-50"
+                        className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium border-b border-slate-50 ${
+                          pathname === "/blog"
+                            ? "text-blue-600 bg-blue-50/50"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
                       >
                         <Newspaper className="h-5 w-5 text-orange-500" /> Blog
                       </Link>
@@ -164,7 +224,11 @@ export async function Navbar() {
                     <SheetClose asChild>
                       <Link
                         href="/about"
-                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 text-slate-700 text-sm font-medium"
+                        className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium ${
+                          pathname === "/about"
+                            ? "text-blue-600 bg-blue-50/50"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
                       >
                         <Info className="h-5 w-5 text-green-500" /> Tentang Kami
                       </Link>
@@ -217,7 +281,7 @@ export async function Navbar() {
                     </Accordion>
                   </div>
 
-                  {/* SOSMED FOOTER */}
+                  {/* SOSMED FOOTER MOBILE */}
                   <div className="mt-6 mx-2 mb-2 p-4 rounded-xl bg-blue-50 border border-blue-100">
                     <p className="text-xs font-bold text-blue-800 mb-3 uppercase tracking-wider">
                       Hubungi Kami
@@ -263,7 +327,7 @@ export async function Navbar() {
               </SheetContent>
             </Sheet>
 
-            {/* 2. LOGO BRANDING (RESPONSIVE) */}
+            {/* 2. LOGO BRANDING */}
             <Link href="/" className="flex items-center gap-2 group">
               <div className="bg-blue-600 p-1.5 rounded-lg text-white group-hover:bg-blue-700 transition shadow-sm shrink-0">
                 <Building2 className="h-5 w-5" />
@@ -279,28 +343,32 @@ export async function Navbar() {
             </Link>
           </div>
 
-          {/* --- BAGIAN KANAN: MENU (DESKTOP) & LOGIN (RESPONSIVE) --- */}
-          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+          {/* --- BAGIAN KANAN: MENU (DESKTOP) & LOGIN --- */}
+          <div className="flex items-center gap-3 lg:gap-8 shrink-0">
             {/* MENU UTAMA (Desktop Only) */}
-            <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-              <Link href="/" className="hover:text-blue-600 transition">
+            <nav className="hidden md:flex items-center gap-8">
+              <Link href="/" className={getLinkClass("/")}>
                 Home
               </Link>
-              <Link href="/blog" className="hover:text-blue-600 transition">
+              <Link href="/blog" className={getLinkClass("/blog")}>
                 Blog
               </Link>
-              <Link href="/about" className="hover:text-blue-600 transition">
+              <Link href="/about" className={getLinkClass("/about")}>
                 Tentang Kami
               </Link>
-              <Link
-                href="/promo"
-                className="flex items-center gap-1 hover:text-blue-600 transition group"
+
+              {/* PROMO (COMING SOON BADGE) */}
+              <div
+                className="flex items-center gap-2 cursor-not-allowed opacity-60"
+                title="Segera Hadir"
               >
-                Promo{" "}
-                <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold group-hover:bg-red-200 transition">
-                  Hot
+                <span className="text-sm font-medium text-slate-400">
+                  Promo
                 </span>
-              </Link>
+                <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200 font-bold">
+                  SOON
+                </span>
+              </div>
             </nav>
 
             <div className="hidden md:block h-6 w-px bg-gray-200"></div>
@@ -323,78 +391,97 @@ export async function Navbar() {
       </div>
 
       {/* --- MEGA MENU (DESKTOP) --- */}
-      <div className="hidden md:block border-t border-gray-100 bg-white relative z-40">
-        {/* PERBAIKAN LAYOUT MEGA MENU: max-w-7xl dan padding yang sama */}
+      <div className="hidden md:block border-t border-gray-100 bg-white relative z-40 shadow-[0_2px_3px_-1px_rgba(0,0,0,0.05)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Ganti gap-1 dengan gap-8 agar lebih lega */}
           <div className="flex items-center gap-8 h-12">
-            {validCategories.map((category) => (
-              <div
-                key={category.id}
-                className="group relative h-full flex items-center"
-              >
-                <Link
-                  href={`/services?category=${category.slug}`}
-                  className="flex items-center text-sm font-medium text-slate-600 hover:text-blue-600 transition-all cursor-pointer gap-2"
+            {validCategories.map((category) => {
+              // Cek apakah halaman yang dibuka adalah halaman services kategori ini
+              const isActiveCategory =
+                pathname.includes(`/services`) &&
+                pathname.includes(category.slug);
+
+              return (
+                <div
+                  key={category.id}
+                  className="group relative h-full flex items-center"
                 >
-                  <span className="text-base opacity-70 group-hover:opacity-100 transition">
-                    {category.icon || "📂"}
-                  </span>
-                  {category.name}
-                  <ChevronDown className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180 text-slate-400 group-hover:text-blue-600 ml-1" />
-                </Link>
-                <div className="absolute left-0 top-full pt-0 invisible opacity-0 -translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
-                  <div className="w-[600px] bg-white rounded-xl shadow-2xl border border-gray-100 p-2 grid grid-cols-12 gap-0 overflow-hidden mt-2">
-                    <div className="col-span-4 bg-slate-50 p-5 flex flex-col justify-between rounded-l-lg border-r border-slate-100">
-                      <div>
-                        <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center text-3xl mb-4">
-                          {category.icon || "📂"}
+                  <Link
+                    href={`/services?category=${category.slug}`}
+                    className={`flex items-center text-sm font-medium transition-all cursor-pointer gap-2 
+                        ${
+                          isActiveCategory
+                            ? "text-blue-600 font-bold"
+                            : "text-slate-600 group-hover:text-blue-600"
+                        }
+                    `}
+                  >
+                    <span className="text-base opacity-70 group-hover:opacity-100 transition">
+                      {category.icon || "📂"}
+                    </span>
+                    {category.name}
+                    <ChevronDown
+                      className={`h-3 w-3 transition-transform duration-300 text-slate-400 group-hover:text-blue-600 ${
+                        isActiveCategory
+                          ? "rotate-180 text-blue-600"
+                          : "group-hover:rotate-180"
+                      }`}
+                    />
+                  </Link>
+
+                  {/* DROPDOWN MENU */}
+                  <div className="absolute left-0 top-full pt-0 invisible opacity-0 -translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
+                    <div className="w-[600px] bg-white rounded-xl shadow-2xl border border-gray-100 p-0 grid grid-cols-12 overflow-hidden mt-0.5 ring-1 ring-black/5">
+                      <div className="col-span-4 bg-slate-50 p-6 flex flex-col justify-between border-r border-slate-100">
+                        <div>
+                          <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-3xl mb-4 border border-slate-100">
+                            {category.icon || "📂"}
+                          </div>
+                          <h4 className="font-bold text-gray-900 text-lg mb-1 leading-tight">
+                            {category.name}
+                          </h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Eksplorasi pilihan terbaik untuk kategori ini.
+                          </p>
                         </div>
-                        <h4 className="font-bold text-gray-900 text-lg mb-1">
-                          {category.name}
-                        </h4>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          Temukan layanan terbaik di kategori {category.name}.
-                        </p>
+                        <Link
+                          href={`/services?category=${category.slug}`}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-4 group/link"
+                        >
+                          Lihat Semua{" "}
+                          <ArrowRight className="w-3 h-3 transition-transform group-hover/link:translate-x-1" />
+                        </Link>
                       </div>
-                      <Link
-                        href={`/services?category=${category.slug}`}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-4 group/link"
-                      >
-                        Lihat Semua{" "}
-                        <ArrowRight className="w-3 h-3 transition-transform group-hover/link:translate-x-1" />
-                      </Link>
-                    </div>
-                    <div className="col-span-8 p-5">
-                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                        Layanan Populer
-                      </h5>
-                      {category.services.length > 0 ? (
-                        <ul className="grid grid-cols-2 gap-2">
-                          {category.services.slice(0, 8).map((service) => (
-                            <li key={service.id}>
-                              <Link
-                                href={`/services/${service.slug}`}
-                                className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 transition-colors group/item"
-                              >
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover/item:bg-blue-500 transition-colors"></div>
-                                <span className="text-sm text-slate-600 group-hover/item:text-blue-700 font-medium line-clamp-1">
-                                  {service.name}
-                                </span>
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm italic">
-                          Belum ada layanan tersedia.
-                        </div>
-                      )}
+                      <div className="col-span-8 p-5 bg-white">
+                        <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                          Layanan Populer
+                        </h5>
+                        {category.services.length > 0 ? (
+                          <ul className="grid grid-cols-2 gap-2">
+                            {category.services.slice(0, 8).map((service) => (
+                              <li key={service.id}>
+                                <Link
+                                  href={`/services/${service.slug}`}
+                                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 transition-colors group/item"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover/item:bg-blue-500 transition-colors"></div>
+                                  <span className="text-sm text-slate-600 group-hover/item:text-blue-700 font-medium line-clamp-1">
+                                    {service.name}
+                                  </span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm italic bg-slate-50/50 rounded-lg">
+                            Belum ada layanan.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
