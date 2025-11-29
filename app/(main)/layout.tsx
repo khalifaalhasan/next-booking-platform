@@ -11,6 +11,7 @@ export default function MainLayout({
     <>
       {/* Navbar User HANYA muncul untuk anak-anak folder (main) */}
       <Navbar />
+
       <main className="min-h-screen bg-white">{children}</main>
       <Footer />
     </>

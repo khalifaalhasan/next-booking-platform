@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookingSkeleton } from "@/components/ui/Skeleton";
 import { User } from "@supabase/supabase-js";
 import { differenceInHours, differenceInDays } from "date-fns";
 import { CheckCircle2, LogIn, ShieldCheck, Save } from "lucide-react";
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 import AuthDialog from "@/components/auth/AuthDialog";
 import EmailVerificationDialog from "@/components/auth/EmailVerificationDialog";
 import { Tables } from "@/types/supabase";
+import GlobalLoading from "@/components/ui/GlobalLoading";
 
 // Helper format rupiah
 const formatRupiah = (num: number) =>
@@ -243,7 +243,7 @@ export default function BookingProcessPage({
     }
   };
 
-  if (loading) return <BookingSkeleton />;
+  if (loading) return <GlobalLoading />;
   if (!service)
     return <div className="p-10 text-center">Layanan tidak ditemukan</div>;
 
