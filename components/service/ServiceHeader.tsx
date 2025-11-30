@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Tables } from "@/types/supabase";
 import {
   format,
@@ -12,14 +13,12 @@ import {
   startOfDay,
   addDays,
   addHours,
-  addMinutes,
-  subMinutes,
+  subHours,
   startOfHour,
   areIntervalsOverlapping,
   differenceInDays,
   differenceInMinutes,
   differenceInCalendarDays,
-  roundToNearestMinutes,
 } from "date-fns";
 import { id } from "date-fns/locale";
 import { DayPicker, DateRange } from "react-day-picker";
@@ -44,7 +43,6 @@ const css = `
   }
   .rdp-button:hover:not([disabled]) { color: #2563eb; background-color: #eff6ff; }
   
-  /* Indikator Booked (Merah) */
   .rdp-day_booked { 
     color: #ef4444 !important; 
     text-decoration: line-through; 
@@ -53,7 +51,6 @@ const css = `
     font-weight: bold;
   }
 
-  /* Indikator Terpilih (Biru) */
   .rdp-day_selected:not([disabled]), 
   .rdp-day_selected:focus:not([disabled]), 
   .rdp-day_selected:active:not([disabled]), 
@@ -65,7 +62,6 @@ const css = `
 
   .rdp-day_today { color: #2563eb; font-weight: 900; }
 
-  /* Desktop Side-by-Side */
   @media (min-width: 768px) {
     .rdp-months { 
       display: flex !important;
@@ -77,7 +73,6 @@ const css = `
     .rdp { --rdp-cell-size: 36px; }
   }
 
-  /* Mobile Tweaks */
   @media (max-width: 768px) {
     .rdp { --rdp-cell-size: 38px; } 
     .rdp-months { justify-content: center; }
@@ -97,6 +92,7 @@ export default function ServiceHeader({
   existingBookings,
 }: ServiceHeaderProps) {
   const router = useRouter();
+  const supabase = createClient();
 
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<"start" | "end">("start");
@@ -106,12 +102,52 @@ export default function ServiceHeader({
   const [range, setRange] = useState<DateRange | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-
   const [numMonths, setNumMonths] = useState(2);
 
-  // Helper Cek Slot
+  const [currentBookings, setCurrentBookings] =
+    useState<Booking[]>(existingBookings);
+
+  // --- 1. LISTENER REALTIME ---
+  useEffect(() => {
+    setCurrentBookings(existingBookings);
+
+    const channel = supabase
+      .channel(`realtime-bookings-${service.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `service_id=eq.${service.id}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from("bookings")
+            .select("start_time, end_time, status")
+            .eq("service_id", service.id)
+            .in("status", [
+              "confirmed",
+              "waiting_verification",
+              "pending_payment",
+            ])
+            .gte("end_time", new Date().toISOString());
+
+          if (data) {
+            setCurrentBookings(data as unknown as Booking[]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [service.id, existingBookings, supabase]);
+
+  // --- HELPER CEK SLOT ---
   const isSlotAvailable = (start: Date, end: Date) => {
-    return !existingBookings.some((b) =>
+    return !currentBookings.some((b) =>
       areIntervalsOverlapping(
         { start, end },
         { start: new Date(b.start_time), end: new Date(b.end_time) }
@@ -119,7 +155,7 @@ export default function ServiceHeader({
     );
   };
 
-  // --- SMART DEFAULTS ---
+  // --- SMART DEFAULTS (1 JAM) ---
   useEffect(() => {
     if (service.unit === "per_day" && !range) {
       let potentialStart = startOfDay(new Date());
@@ -133,25 +169,21 @@ export default function ServiceHeader({
       setRange({ from: potentialStart, to: potentialEnd });
     } else if (service.unit === "per_hour" && !startDate) {
       const now = new Date();
-      let potentialStart = roundToNearestMinutes(addMinutes(now, 30), {
-        nearestTo: 30,
-      });
-      if (isBefore(potentialStart, now))
-        potentialStart = addMinutes(potentialStart, 30);
-
+      // Rounding ke Jam Depan (10:15 -> 11:00)
+      let potentialStart = startOfHour(addHours(now, 1));
       let potentialEnd = addHours(potentialStart, 1);
       let attempts = 0;
 
       while (!isSlotAvailable(potentialStart, potentialEnd) && attempts < 48) {
-        potentialStart = addMinutes(potentialStart, 30);
-        potentialEnd = addMinutes(potentialStart, 60);
+        potentialStart = addHours(potentialStart, 1);
+        potentialEnd = addHours(potentialStart, 1);
         attempts++;
       }
       setStartDate(potentialStart);
       setEndDate(potentialEnd);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentBookings]);
 
   useEffect(() => {
     const handleResize = () => setNumMonths(window.innerWidth < 768 ? 1 : 2);
@@ -174,7 +206,7 @@ export default function ServiceHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [containerRef]);
 
-  const bookedDays = existingBookings.map((b) => ({
+  const bookedDays = currentBookings.map((b) => ({
     from: new Date(b.start_time),
     to: new Date(b.end_time),
   }));
@@ -192,8 +224,8 @@ export default function ServiceHeader({
 
   const handleDayClick = (date: Date) => {
     const currentHour = startDate ? startDate.getHours() : 8;
-    const currentMinute = startDate ? startDate.getMinutes() : 0;
-    const newStart = setMinutes(setHours(date, currentHour), currentMinute);
+    // Menit selalu 00
+    const newStart = setMinutes(setHours(date, currentHour), 0);
     setStartDate(newStart);
     setEndDate(addHours(newStart, 1));
     setMobileTimeTab("start");
@@ -210,6 +242,7 @@ export default function ServiceHeader({
     setEndDate(timestamp);
   };
 
+  // Mobile Stepper (+/- 1 Jam)
   const handleMobileTimeAdjust = (
     type: "start" | "end",
     operation: "add" | "sub"
@@ -218,7 +251,7 @@ export default function ServiceHeader({
     const baseDate =
       type === "start" ? startDate : endDate || addHours(startDate, 1);
     const newDate =
-      operation === "add" ? addMinutes(baseDate, 30) : subMinutes(baseDate, 30);
+      operation === "add" ? addHours(baseDate, 1) : subHours(baseDate, 1);
 
     if (type === "start" && isBefore(newDate, new Date())) {
       toast.error("Waktu tidak valid");
@@ -244,6 +277,16 @@ export default function ServiceHeader({
   };
 
   const handleApply = () => {
+    if (service.unit === "per_day") {
+      if (!range?.from || !range?.to)
+        return toast.error("Lengkapi tanggal dulu");
+      if (!isSlotAvailable(range.from, range.to))
+        return toast.error("Tanggal sudah dipesan!");
+    } else {
+      if (!startDate || !endDate) return toast.error("Lengkapi jam dulu");
+      if (!isSlotAvailable(startDate, endDate))
+        return toast.error("Jam sudah dipesan!");
+    }
     setIsOpen(false);
     toast.success("Jadwal tersimpan.");
   };
@@ -251,6 +294,16 @@ export default function ServiceHeader({
   const handleSearch = () => {
     let startStr = "",
       endStr = "";
+    const checkStart = service.unit === "per_day" ? range?.from : startDate;
+    const checkEnd = service.unit === "per_day" ? range?.to : endDate;
+
+    if (checkStart && checkEnd) {
+      if (!isSlotAvailable(checkStart, checkEnd)) {
+        toast.error("Maaf, slot ini baru saja diambil. Pilih waktu lain.");
+        return;
+      }
+    }
+
     if (service.unit === "per_day") {
       if (!range?.from || !range?.to)
         return toast.error("Pilih tanggal check-in & check-out");
@@ -288,7 +341,6 @@ export default function ServiceHeader({
     const options = [];
     for (let h = 7; h <= 22; h++) {
       options.push({ hour: h, minute: 0 });
-      if (h !== 22) options.push({ hour: h, minute: 30 });
     }
     return options;
   };
@@ -296,11 +348,16 @@ export default function ServiceHeader({
   const getEndHourOptions = () => {
     if (!startDate) return [];
     const options = [];
-    for (let i = 1; i <= 48; i++) {
-      const nextTime = addMinutes(startDate, i * 30);
+    for (let i = 1; i <= 24; i++) {
+      const nextTime = addHours(startDate, i);
       options.push(nextTime);
     }
     return options;
+  };
+
+  const isStartHourDisabled = (h: number) => {
+    if (!startDate) return false;
+    return isSameDay(startDate, new Date()) && h < new Date().getHours();
   };
 
   return (
@@ -309,7 +366,7 @@ export default function ServiceHeader({
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between h-auto md:h-20 py-3 md:py-0 gap-4">
-            {/* INFO SERVICE */}
+            {/* 1. INFO SERVICE */}
             <div className="w-full md:w-1/3 flex items-center gap-3 overflow-hidden">
               <div className="bg-blue-50 text-blue-600 p-2 rounded-lg shrink-0">
                 <CalendarIcon className="w-6 h-6" />
@@ -330,7 +387,7 @@ export default function ServiceHeader({
               </div>
             </div>
 
-            {/* INPUT TRIGGER */}
+            {/* 2. INPUT TRIGGER */}
             <div className="w-full md:flex-1 relative" ref={containerRef}>
               <div
                 className="flex items-center border border-gray-300 rounded-full p-1 cursor-pointer hover:shadow-md transition bg-white"
@@ -395,6 +452,7 @@ export default function ServiceHeader({
                     </div>
                   </div>
                 )}
+
                 <div className="bg-blue-600 text-white p-3 rounded-full shrink-0">
                   <Clock className="w-4 h-4" />
                 </div>
@@ -465,8 +523,7 @@ export default function ServiceHeader({
 
                       {/* 2. JAM SELECTOR */}
                       {service.unit === "per_hour" && (
-                        <div className="flex flex-col w-full md:w-auto md:flex-row md:divide-x divide-gray-100 h-full md:h-[320px]">
-                          {/* Mobile Tab */}
+                        <div className="flex flex-col w-full md:w-auto md:flex-row md:divide-x divide-gray-100 h-full md:h-80">
                           <div className="flex md:hidden p-2 bg-gray-50 gap-2 border-b border-gray-100 shrink-0">
                             <button
                               onClick={() => setMobileTimeTab("start")}
@@ -537,22 +594,16 @@ export default function ServiceHeader({
                             </div>
                           </div>
 
-                          {/* Desktop Lists */}
+                          {/* Desktop Lists (1 JAM) */}
                           <div className="hidden md:flex flex-1 p-0 flex-col w-36 h-full">
                             <div className="p-3 bg-white sticky top-0 border-b font-bold text-xs text-gray-500 uppercase text-center z-10">
                               Mulai
                             </div>
                             <div className="p-2 space-y-1 overflow-y-auto custom-scrollbar flex-1">
                               {getStartHourOptions().map((t, i) => {
-                                const isDisabled =
-                                  startDate &&
-                                  isSameDay(startDate, new Date()) &&
-                                  (t.hour < new Date().getHours() ||
-                                    (t.hour === new Date().getHours() &&
-                                      t.minute < new Date().getMinutes()));
+                                const isDisabled = isStartHourDisabled(t.hour);
                                 const isSelected =
-                                  startDate &&
-                                  startDate.getHours() === t.hour &&
+                                  startDate?.getHours() === t.hour &&
                                   startDate.getMinutes() === t.minute;
                                 return (
                                   <button
@@ -604,7 +655,8 @@ export default function ServiceHeader({
                                       onClick={() =>
                                         handleEndTimestampClick(timeObj)
                                       }
-                                      className={`w-full py-2 text-sm rounded-md transition block text-center flex items-center justify-center gap-1 ${
+                                      // FIX: CSS CONFLICT (Hapus 'flex' di sini)
+                                      className={`w-full py-2 text-sm rounded-md transition block text-center flex-col md:flex-row items-center justify-center gap-1 ${
                                         isConflict
                                           ? "opacity-30 cursor-not-allowed text-red-400 line-through"
                                           : "hover:bg-green-50"
@@ -617,7 +669,7 @@ export default function ServiceHeader({
                                       <span>{format(timeObj, "HH:mm")}</span>
                                       {dayDiff > 0 && (
                                         <span className="text-[10px] opacity-70">
-                                          (+{dayDiff})
+                                          (+{dayDiff}hr)
                                         </span>
                                       )}
                                     </button>
@@ -636,8 +688,7 @@ export default function ServiceHeader({
 
                     {/* --- FOOTER: KONFIRMASI & LEGEND --- */}
                     <div className="p-3 bg-gray-50 border-t border-gray-100 flex flex-col-reverse md:flex-row items-center justify-between gap-4 shrink-0">
-                      {/* Legend Indikator (DITAMBAHKAN KEMBALI) */}
-                      <div className="flex gap-3 text-[10px] md:text-xs text-gray-500 pl-2">
+                      <div className="flex gap-3 text-[10px] md:text-xs text-gray-500 pl-2 w-full md:w-auto justify-center md:justify-start">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>{" "}
                           Pilih
@@ -660,7 +711,7 @@ export default function ServiceHeader({
 
                       <button
                         onClick={handleApply}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-6 rounded-lg transition active:scale-95 flex items-center gap-2 shadow-sm w-full md:w-auto justify-center"
+                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 px-6 rounded-lg transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
                       >
                         <Check className="w-4 h-4" />
                         Terapkan
@@ -699,48 +750,5 @@ export default function ServiceHeader({
         }
       `}</style>
     </>
-  );
-}
-
-// ... DateTimeTrigger sama ...
-interface DateTimeTriggerProps {
-  label: string;
-  value: Date | undefined;
-  onClick: () => void;
-  isActive: boolean;
-}
-
-function DateTimeTrigger({
-  label,
-  value,
-  onClick,
-  isActive,
-}: DateTimeTriggerProps) {
-  return (
-    <div
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`flex-1 px-4 py-2 cursor-pointer rounded-md transition hover:bg-gray-100 flex flex-col justify-center ${
-        isActive ? "bg-blue-50 ring-1 ring-blue-500" : ""
-      }`}
-    >
-      <label className="text-[10px] text-gray-400 font-bold uppercase block cursor-pointer">
-        {label}
-      </label>
-      <div className="text-sm font-bold text-gray-900 flex items-center gap-2 overflow-hidden">
-        {value ? (
-          <>
-            <span className="text-blue-600">{format(value, "HH:mm")}</span>
-            <span className="text-gray-400 font-normal text-xs truncate">
-              {format(value, "dd MMM", { locale: id })}
-            </span>
-          </>
-        ) : (
-          <span className="text-gray-300 font-normal">--:--</span>
-        )}
-      </div>
-    </div>
   );
 }
