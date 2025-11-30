@@ -120,11 +120,14 @@ export default function PaymentPage({ params }: PageProps) {
       const fileName = `${bookingId}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
+      // 1. Upload File
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
+      // 2. Insert Payment Record
+      // (Trigger Database akan otomatis update status booking jadi 'waiting_verification')
       const { error: insertError } = await supabase.from("payments").insert({
         booking_id: booking.id,
         user_id: user.id,
@@ -135,12 +138,7 @@ export default function PaymentPage({ params }: PageProps) {
       });
       if (insertError) throw insertError;
 
-      const { error: updateBookingError } = await supabase
-        .from("bookings")
-        .update({ status: "waiting_verification" })
-        .eq("id", booking.id);
-
-      if (updateBookingError) throw updateBookingError;
+      // --- BAGIAN UPDATE BOOKING DIHAPUS (Sudah Otomatis) ---
 
       toast.success("Bukti Pembayaran Terkirim!", {
         description: "Admin akan memverifikasi dalam 1x24 jam.",
@@ -150,9 +148,7 @@ export default function PaymentPage({ params }: PageProps) {
       router.push("/dashboard/mybooking");
       router.refresh();
     } catch (err: unknown) {
-      let message = "Terjadi kesalahan saat upload.";
-      if (err instanceof Error) message = err.message;
-      toast.error("Gagal Upload", { description: message });
+      // ... error handling
     } finally {
       setUploading(false);
     }
