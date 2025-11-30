@@ -2,118 +2,123 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Tables } from '@/types/supabase';
 
-// Register Font (Opsional, pakai default Helvetica biar cepat)
-// Font.register({ family: 'Roboto', src: '...' });
-
-// Style CSS khusus PDF
-const styles = StyleSheet.create({
-  page: { flexDirection: 'column', backgroundColor: '#FFFFFF', fontFamily: 'Helvetica' },
-  header: { backgroundColor: '#2563eb', padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerText: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  subHeader: { color: '#bfdbfe', fontSize: 10, marginTop: 4 },
-  
-  section: { margin: 10, padding: 10 },
-  
-  // Kotak Info Utama
-  infoBox: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 15, marginBottom: 15 },
-  infoLeft: { width: '70%' },
-  infoRight: { width: '30%', alignItems: 'flex-end' },
-  
-  label: { fontSize: 10, color: '#6b7280', marginBottom: 4, textTransform: 'uppercase' },
-  value: { fontSize: 14, color: '#111827', fontWeight: 'bold', marginBottom: 10 },
-  valueSmall: { fontSize: 12, color: '#374151', marginBottom: 8 },
-  
-  // Grid 2 Kolom
-  grid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  col: { width: '48%' },
-  
-  // QR Code Area
-  qrSection: { alignItems: 'center', marginTop: 20, padding: 20, backgroundColor: '#f9fafb', borderRadius: 8 },
-  qrImage: { width: 100, height: 100 },
-  qrText: { fontSize: 10, color: '#6b7280', marginTop: 8 },
-
-  footer: { position: 'absolute', bottom: 30, left: 0, right: 0, textAlign: 'center', fontSize: 10, color: '#9ca3af' }
+// 1. Register Font (Ambil dari CDN Google Fonts agar konsisten)
+Font.register({
+  family: 'Roboto',
+  fonts: [
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf' },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf', fontWeight: 'bold' },
+  ],
 });
 
-// Helper Rupiah
-const formatRupiah = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+const styles = StyleSheet.create({
+  page: { flexDirection: 'column', backgroundColor: '#FFFFFF', fontFamily: 'Roboto', padding: 30 },
+  
+  // Header Biru
+  header: { 
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderBottomWidth: 2, borderBottomColor: '#2563eb', paddingBottom: 10, marginBottom: 20 
+  },
+  brand: { fontSize: 18, fontWeight: 'bold', color: '#2563eb' },
+  title: { fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1 },
 
-// Component PDF
-export const TicketDocument = ({ booking }: { booking: any }) => (
+  // Order ID Box
+  orderBox: { backgroundColor: '#f3f4f6', padding: 10, borderRadius: 4, marginBottom: 20 },
+  orderLabel: { fontSize: 8, color: '#6b7280', marginBottom: 2 },
+  orderId: { fontSize: 12, fontWeight: 'bold', fontFamily: 'Courier' },
+
+  // Content Grid
+  row: { flexDirection: 'row', marginBottom: 10 },
+  colHalf: { width: '50%' },
+  
+  label: { fontSize: 9, color: '#6b7280', marginBottom: 3, textTransform: 'uppercase' },
+  value: { fontSize: 11, color: '#111827', fontWeight: 'bold' },
+  valueSmall: { fontSize: 10, color: '#374151' },
+
+  // QR Code
+  qrContainer: { 
+    marginTop: 30, alignItems: 'center', 
+    borderWidth: 1, borderColor: '#e5e7eb', borderStyle: 'dashed', 
+    padding: 15, borderRadius: 8 
+  },
+  qrImage: { width: 120, height: 120 },
+  qrNote: { fontSize: 9, color: '#9ca3af', marginTop: 5 },
+
+  footer: { 
+    position: 'absolute', bottom: 30, left: 30, right: 30, 
+    textAlign: 'center', fontSize: 8, color: '#9ca3af', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 
+  }
+});
+
+// Tipe Data
+type BookingDetail = Tables<'bookings'> & {
+    service: { name: string; unit: string } | null;
+};
+
+export const TicketDocument = ({ booking }: { booking: BookingDetail }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       
-      {/* HEADER */}
+      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerText}>E-TICKET / VOUCHER</Text>
-          <Text style={styles.subHeader}>Order ID: {booking.id}</Text>
+        <Text style={styles.brand}>Pusat Pengembangan Bisnis</Text>
+        <Text style={styles.title}>E-Ticket</Text>
+      </View>
+
+      {/* Order Info */}
+      <View style={styles.orderBox}>
+         <Text style={styles.orderLabel}>KODE BOOKING</Text>
+         <Text style={styles.orderId}>{booking.id.toUpperCase()}</Text>
+      </View>
+
+      {/* Service Info */}
+      <View style={{ marginBottom: 20 }}>
+         <Text style={styles.label}>Layanan</Text>
+         <Text style={{...styles.value, fontSize: 16}}>{booking.service?.name}</Text>
+         <Text style={styles.valueSmall}>Unit Sewa: {booking.service?.unit === 'per_day' ? 'Harian' : 'Per Jam'}</Text>
+      </View>
+
+      {/* Date & Time Grid */}
+      <View style={styles.row}>
+        <View style={styles.colHalf}>
+            <Text style={styles.label}>Check-in</Text>
+            <Text style={styles.value}>{format(new Date(booking.start_time), 'dd MMMM yyyy', { locale: id })}</Text>
+            <Text style={styles.valueSmall}>{format(new Date(booking.start_time), 'HH:mm')} WIB</Text>
         </View>
-        <View>
-          <Text style={{ color: 'white', fontSize: 12 }}>Pusat Bisnis</Text>
+        <View style={styles.colHalf}>
+            <Text style={styles.label}>Check-out</Text>
+            <Text style={styles.value}>{format(new Date(booking.end_time), 'dd MMMM yyyy', { locale: id })}</Text>
+            <Text style={styles.valueSmall}>{format(new Date(booking.end_time), 'HH:mm')} WIB</Text>
         </View>
       </View>
 
-      {/* BODY */}
-      <View style={styles.section}>
-        
-        {/* INFO SERVICE */}
-        <View style={styles.infoBox}>
-          <View style={styles.infoLeft}>
-            <Text style={styles.label}>Layanan</Text>
-            <Text style={{ ...styles.value, fontSize: 18, color: '#2563eb' }}>{booking.service.name}</Text>
-            <Text style={styles.valueSmall}>Unit: {booking.service.unit}</Text>
-          </View>
-          <View style={styles.infoRight}>
-            <Text style={styles.label}>Status</Text>
-            <Text style={{ color: '#16a34a', fontWeight: 'bold', fontSize: 14 }}>LUNAS / CONFIRMED</Text>
-          </View>
-        </View>
-
-        {/* DETAIL TANGGAL */}
-        <View style={styles.grid}>
-          <View style={styles.col}>
-            <Text style={styles.label}>Check-in / Mulai</Text>
-            <Text style={styles.value}>{format(new Date(booking.start_time), 'EEEE, dd MMMM yyyy', { locale: id })}</Text>
-            <Text style={styles.valueSmall}>{format(new Date(booking.start_time), 'HH:mm')} WIB</Text>
-          </View>
-          <View style={styles.col}>
-            <Text style={styles.label}>Check-out / Selesai</Text>
-            <Text style={styles.value}>{format(new Date(booking.end_time), 'EEEE, dd MMMM yyyy', { locale: id })}</Text>
-            <Text style={styles.valueSmall}>{format(new Date(booking.end_time), 'HH:mm')} WIB</Text>
-          </View>
-        </View>
-
-        {/* DATA TAMU */}
-        <View style={{ ...styles.grid, marginTop: 10 }}>
-          <View style={styles.col}>
-            <Text style={styles.label}>Nama Tamu</Text>
-            <Text style={styles.valueSmall}>{booking.customer_name}</Text>
-          </View>
-          <View style={styles.col}>
+      {/* Customer Info Grid */}
+      <View style={styles.row}>
+         <View style={styles.colHalf}>
+            <Text style={styles.label}>Nama Pemesan</Text>
+            <Text style={styles.value}>{booking.customer_name}</Text>
+         </View>
+         <View style={styles.colHalf}>
             <Text style={styles.label}>Kontak</Text>
             <Text style={styles.valueSmall}>{booking.customer_phone}</Text>
             <Text style={styles.valueSmall}>{booking.customer_email}</Text>
-          </View>
-        </View>
-
-        {/* QR CODE (Generate pakai API publik biar mudah) */}
-        <View style={styles.qrSection}>
-          {/* Kita gunakan API QR Server untuk generate gambar QR dari Booking ID */}
-          <Image 
-            style={styles.qrImage} 
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${booking.id}`} 
-          />
-          <Text style={styles.qrText}>Tunjukkan QR Code ini kepada petugas saat kedatangan.</Text>
-        </View>
-
+         </View>
       </View>
 
-      {/* FOOTER */}
+      {/* QR Code Section */}
+      <View style={styles.qrContainer}>
+         <Image 
+            style={styles.qrImage} 
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${booking.id}`} 
+         />
+         <Text style={styles.qrNote}>Tunjukkan kode ini kepada petugas untuk check-in.</Text>
+      </View>
+
+      {/* Footer */}
       <View style={styles.footer}>
-        <Text>Terima kasih telah memesan di Pusat Pengembangan Bisnis.</Text>
-        <Text>Tiket ini adalah bukti pembayaran yang sah.</Text>
+         <Text>UIN Raden Fatah Palembang • Dokumen ini sah dan dicetak oleh komputer.</Text>
       </View>
 
     </Page>

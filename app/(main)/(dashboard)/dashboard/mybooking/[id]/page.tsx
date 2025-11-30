@@ -18,16 +18,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import DownloadTicketButton from "@/components/booking/DownloadTicketButton";
-
 import { Tables } from "@/types/supabase";
 
+// Import komponen Download Ticket (Client Component)
+import DownloadTicketButton from "@/components/booking/DownloadTicketButton";
+
+// Tipe Data
 type ServiceWithCategory = Tables<"services"> & {
-  categories: Tables<"categories"> | null; // Tambahkan relasi categories di sini
+  categories: Tables<"categories"> | null;
 };
 type BookingDetailData = Tables<"bookings"> & {
-  service: ServiceWithCategory; // Single object (karena join)
-  payments: Tables<"payments">[]; // Array object (karena one-to-many)
+  service: ServiceWithCategory;
+  payments: Tables<"payments">[];
 };
 
 interface PageProps {
@@ -43,6 +45,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Fetch Booking Detail
   const { data, error } = await supabase
     .from("bookings")
     .select(
@@ -61,6 +64,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
 
   if (error || !data) notFound();
 
+  // Casting ke tipe data lengkap
   const booking = data as unknown as BookingDetailData;
 
   // --- HELPER ---
@@ -70,8 +74,10 @@ export default async function BookingDetailPage({ params }: PageProps) {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(num);
+
   const formatDate = (date: string) =>
     format(new Date(date), "EEE, dd MMM yyyy", { locale: id });
+
   const formatTime = (date: string) =>
     format(new Date(date), "HH:mm", { locale: id });
 
@@ -80,7 +86,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
   const payments = booking.payments || [];
   const hasPendingPayment = payments.some((p) => p.status === "pending");
 
-  // --- KALKULASI HARGA ---
+  // --- KALKULASI DURASI ---
   const startDate = new Date(booking.start_time);
   const endDate = new Date(booking.end_time);
   let durationQty = 0;
@@ -97,20 +103,36 @@ export default async function BookingDetailPage({ params }: PageProps) {
 
   // --- LOGIC STATUS & TOMBOL ---
   const getStatusInfo = () => {
-    // 1. Jika Booking sudah COMPLETE/CONFIRMED (Lunas & Verified)
-    if (booking.status === "confirmed" || booking.status === "completed") {
+    // 1. LUNAS & VERIFIED (Tiket Ready)
+    if (booking.status === "confirmed" && booking.payment_status === "paid") {
       return {
         bg: "bg-green-50",
         text: "text-green-700",
         border: "border-green-200",
         icon: CheckCircle2,
-        label: "Pesanan Dikonfirmasi",
-        msg: "Selamat! Pesanan Anda telah terbit.",
+        label: "Pesanan Lunas",
+        msg: "Selamat! E-Tiket Anda sudah terbit.",
         action: "ticket",
       };
     }
 
-    // 2. Jika Booking DIBATALKAN
+    // 2. SUDAH DP (Tapi belum lunas -> Butuh Pelunasan)
+    if (
+      booking.status === "confirmed" &&
+      booking.payment_status === "partial"
+    ) {
+      return {
+        bg: "bg-blue-50",
+        text: "text-blue-700",
+        border: "border-blue-200",
+        icon: CheckCircle2,
+        label: "Booking Terkonfirmasi (DP)",
+        msg: "Slot aman. Silakan lunasi sisa tagihan.",
+        action: "pay_remaining",
+      };
+    }
+
+    // 3. DIBATALKAN
     if (booking.status === "cancelled") {
       return {
         bg: "bg-red-50",
@@ -123,34 +145,20 @@ export default async function BookingDetailPage({ params }: PageProps) {
       };
     }
 
-    // 3. [CRUCIAL] Jika ada PEMBAYARAN PENDING (User baru upload bukti, Admin belum cek)
-    // Tidak peduli status bookingnya apa, kalau ada duit nyangkut, STOP transfer lagi.
-    if (hasPendingPayment) {
-      return {
-        bg: "bg-blue-50",
-        text: "text-blue-700",
-        border: "border-blue-200",
-        icon: AlertCircle,
-        label: "Menunggu Verifikasi",
-        msg: "Bukti pembayaran Anda sedang dicek Admin. Mohon tunggu atau hubungi WA untuk percepatan.",
-        action: "contact_admin", // <-- Tombol WA
-      };
-    }
-
-    // 4. Jika Status PARTIAL (Sudah DP Verified, Mau Lunasin)
-    if (booking.payment_status === "partial") {
+    // 4. MENUNGGU VERIFIKASI ADMIN (Pending Payment uploaded)
+    if (hasPendingPayment || booking.status === "waiting_verification") {
       return {
         bg: "bg-yellow-50",
         text: "text-yellow-800",
         border: "border-yellow-200",
         icon: Hourglass,
-        label: "Menunggu Pelunasan",
-        msg: "DP Anda sudah diterima. Silakan lunasi sisa tagihan.",
-        action: "pay_remaining", // <-- Tombol Lunasi
+        label: "Menunggu Verifikasi",
+        msg: "Admin sedang mengecek bukti bayar Anda.",
+        action: "contact_admin",
       };
     }
 
-    // 5. Default: Belum Bayar Sama Sekali (atau pembayaran sebelumnya di-REJECT)
+    // 5. BELUM BAYAR (DEFAULT / Initial State / Rejected)
     return {
       bg: "bg-orange-50",
       text: "text-orange-700",
@@ -158,18 +166,18 @@ export default async function BookingDetailPage({ params }: PageProps) {
       icon: Clock,
       label: "Menunggu Pembayaran",
       msg: "Segera selesaikan pembayaran Anda.",
-      action: "pay_full", // <-- Tombol Bayar
+      action: "pay_full",
     };
   };
 
   const statusInfo = getStatusInfo();
   const StatusIcon = statusInfo.icon;
 
-  // Link WA (Dynamic Message)
-  const waMessage = `Halo Admin, saya sudah melakukan pembayaran untuk Order ID: ${booking.id}. Mohon segera diverifikasi. Terima kasih.`;
-  const waLink = `https://wa.me/6285709461646?text=${encodeURIComponent(
+  // Link WA Admin
+  const waMessage = `Halo Admin, saya mau konfirmasi pesanan Order ID: ${booking.id}. Mohon dicek. Terima kasih.`;
+  const waLink = `https://wa.me/6281234567890?text=${encodeURIComponent(
     waMessage
-  )}`;
+  )}`; // Ganti nomor WA Admin
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
@@ -186,7 +194,9 @@ export default async function BookingDetailPage({ params }: PageProps) {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-slate-900">Detail Pesanan</h1>
-          <p className="text-xs text-slate-500">Order ID: {booking.id}</p>
+          <p className="text-xs text-slate-500">
+            Order ID: {booking.id.slice(0, 8)}
+          </p>
         </div>
       </div>
 
@@ -204,6 +214,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* KOLOM KIRI */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Card Detail Service */}
           <Card className="overflow-hidden border-slate-200 shadow-sm">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <div className="flex items-center gap-2 text-slate-700">
@@ -308,18 +319,24 @@ export default async function BookingDetailPage({ params }: PageProps) {
                         <p className="font-bold text-slate-900">
                           {formatRupiah(pay.amount)}
                         </p>
+                        {/* Status Badge Payment */}
                         <Badge
                           variant={
-                            pay.status === "verified"
+                            pay.status === "verified" // Fix: Sesuaikan dengan enum DB (verified/rejected)
                               ? "default"
                               : pay.status === "rejected"
                               ? "destructive"
                               : "secondary"
                           }
+                          className={
+                            pay.status === "verified" ? "bg-green-600" : ""
+                          }
                         >
                           {pay.status === "pending"
                             ? "Menunggu Verifikasi"
-                            : pay.status}
+                            : pay.status === "verified"
+                            ? "Diterima"
+                            : "Ditolak"}
                         </Badge>
                       </div>
                     </div>
@@ -334,7 +351,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
           </Card>
         </div>
 
-        {/* KOLOM KANAN: RINCIAN HARGA */}
+        {/* KOLOM KANAN: HARGA & AKSI */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 space-y-6">
             <Card className="border-slate-200 shadow-sm">
@@ -399,7 +416,7 @@ export default async function BookingDetailPage({ params }: PageProps) {
 
             {/* ACTION BUTTONS */}
             <div className="space-y-3">
-              {/* 1. TOMBOL BAYAR (Hanya jika TIDAK ada pembayaran pending & belum lunas) */}
+              {/* 1. TOMBOL BAYAR AWAL (Full/DP) */}
               {statusInfo.action === "pay_full" && (
                 <Link href={`/payment/${booking.id}?type=full`}>
                   <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-6 shadow-lg shadow-orange-100 text-lg">
@@ -408,16 +425,16 @@ export default async function BookingDetailPage({ params }: PageProps) {
                 </Link>
               )}
 
-              {/* 2. TOMBOL LUNASI (Jika Partial & Gak ada pending) */}
+              {/* 2. TOMBOL PELUNASAN (Jika Partial) */}
               {statusInfo.action === "pay_remaining" && (
                 <Link href={`/payment/${booking.id}?type=full`}>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-6 shadow-lg shadow-orange-100 text-lg animate-pulse">
+                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 shadow-lg shadow-green-100 text-lg animate-pulse">
                     <CreditCard className="mr-2 h-5 w-5" /> Lunasi Tagihan
                   </Button>
                 </Link>
               )}
 
-              {/* 3. TOMBOL WA (Jika Pending / Menunggu Verifikasi) */}
+              {/* 3. TOMBOL WA (Jika Pending Verifikasi) */}
               {statusInfo.action === "contact_admin" && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer">
                   <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 shadow-lg shadow-green-100 text-base">
@@ -427,8 +444,9 @@ export default async function BookingDetailPage({ params }: PageProps) {
                 </a>
               )}
 
-              {/* 4. TOMBOL DOWNLOAD */}
+              {/* 4. TOMBOL TIKET (Hanya jika Lunas & Verified) */}
               {statusInfo.action === "ticket" && (
+                // Pass booking data ke Client Component
                 <DownloadTicketButton booking={booking} />
               )}
 
