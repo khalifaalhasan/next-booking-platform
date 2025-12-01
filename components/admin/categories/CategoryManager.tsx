@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, Tags } from "lucide-react";
-import CategoryForm from "@/components/admin/CategoryForm";
+import CategoryForm from "@/components/admin/categories/CategoryForm";
 import { Tables } from "@/types/supabase";
 
 type Category = Tables<"categories">;
