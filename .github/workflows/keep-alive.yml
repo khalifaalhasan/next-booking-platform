@@ -1,0 +1,20 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Jalan setiap jam 00:00 UTC (Sekali sehari)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Biar bisa ditest manual kalau mau
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        # Menggunakan curl untuk request data (limit 1 biar ringan)
+        # Ganti 'nama_tabel' dengan salah satu tabel di database kamu
+        run: |
+          curl --request GET \
+          --url '${{ secrets.SUPABASE_URL }}/rest/v1/users?select=*&limit=1' \
+          --header 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}' \
+          --header 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}'

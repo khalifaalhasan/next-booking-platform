@@ -1,17 +1,10 @@
 version: 2
 updates:
-  # 1. Konfigurasi untuk NPM (Javascript/TypeScript/Node.js)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
+      interval: "daily"
       timezone: "Asia/Jakarta"
     open-pull-requests-limit: 10
 
-  # 2. Hapus blok di bawah ini jika tidak pakai Docker
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+
