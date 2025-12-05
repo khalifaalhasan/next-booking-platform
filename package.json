@@ -23,7 +23,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@react-pdf/renderer": "^4.3.1",
     "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.86.0",
+    "@supabase/supabase-js": "^2.86.2",
     "@yudiel/react-qr-scanner": "^2.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
