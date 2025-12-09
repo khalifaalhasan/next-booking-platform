@@ -6,9 +6,6 @@ export const metadata = {
     "Informasi tentang Pusat Pengembangan Bisnis UIN Raden Fatah Palembang",
 };
 
-interface AboutPageProps {
-  searchParams: Promise<{ q?: string; cat?: string }>;
-}
 
 export default function AboutPage() {
   return (

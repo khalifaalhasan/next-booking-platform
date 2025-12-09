@@ -2,6 +2,11 @@ import PageHeader from "@/components/ui/PageHeader";
 import FadeIn from "@/components/ui/FadeIn";
 import { Search, UserPlus, CalendarCheck, CreditCard, CheckCircle } from "lucide-react";
 
+export const metadata = {
+  title: "Panduan Pemesanan",
+  description: "Langkah mudah menyewa fasilitas di Pusat Bisnis.",
+}
+
 const steps = [
   {
     icon: <UserPlus className="w-6 h-6" />,
