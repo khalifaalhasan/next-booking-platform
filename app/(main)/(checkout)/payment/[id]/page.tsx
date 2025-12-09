@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, Suspense } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tables } from "@/types/supabase";
@@ -13,12 +13,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Copy,
-  Info, // Tambah icon Info
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-// --- TIPE DATA ---
+// --- TIPE DATA & INTERFACE (Sama, tidak berubah) ---
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -36,7 +36,11 @@ interface PaymentOptionProps {
   logo: string;
 }
 
-export default function PaymentPage({ params }: PageProps) {
+// ==========================================================
+// 1. PAYMENT CONTENT: ISI SEMUA LOGIC + UI (HTML) DISINI
+// ==========================================================
+function PaymentContent({ params }: PageProps) {
+  // --- A. LOGIC & STATE (Sama seperti kodemu) ---
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -120,14 +124,11 @@ export default function PaymentPage({ params }: PageProps) {
       const fileName = `${bookingId}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      // 1. Upload File
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
-      // 2. Insert Payment Record
-      // (Trigger Database akan otomatis update status booking jadi 'waiting_verification')
       const { error: insertError } = await supabase.from("payments").insert({
         booking_id: booking.id,
         user_id: user.id,
@@ -138,8 +139,6 @@ export default function PaymentPage({ params }: PageProps) {
       });
       if (insertError) throw insertError;
 
-      // --- BAGIAN UPDATE BOOKING DIHAPUS (Sudah Otomatis) ---
-
       toast.success("Bukti Pembayaran Terkirim!", {
         description: "Admin akan memverifikasi dalam 1x24 jam.",
         duration: 5000,
@@ -148,7 +147,8 @@ export default function PaymentPage({ params }: PageProps) {
       router.push("/dashboard/mybooking");
       router.refresh();
     } catch (err: unknown) {
-      // ... error handling
+      console.error(err);
+      toast.error("Gagal mengupload bukti pembayaran");
     } finally {
       setUploading(false);
     }
@@ -160,6 +160,9 @@ export default function PaymentPage({ params }: PageProps) {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(num);
+
+  // --- B. RENDER UI ---
+  // (Pindahkan semua IF dan RETURN UI kesini, karena variable diatas dibutuhkan disini)
 
   if (loading)
     return (
@@ -491,7 +494,27 @@ export default function PaymentPage({ params }: PageProps) {
   );
 }
 
-// --- SUB KOMPONEN (Sama seperti sebelumnya) ---
+// ==========================================================
+// 2. PAYMENT PAGE: CUMA SEBAGAI WRAPPER (PEMBUNGKUS)
+// ==========================================================
+export default function PaymentPage(props: PageProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <p className="text-gray-500 animate-pulse">
+            Memuat halaman pembayaran...
+          </p>
+        </div>
+      }
+    >
+      {/* Panggil Logic & UI disini */}
+      <PaymentContent {...props} />
+    </Suspense>
+  );
+}
+
+// --- SUB KOMPONEN (TETAP SAMA) ---
 function PaymentOption({
   id,
   title,

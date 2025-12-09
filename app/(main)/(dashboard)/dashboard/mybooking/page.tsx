@@ -12,6 +12,13 @@ import { CalendarDays, Sparkles, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 // Helper Format
+
+export const metadata = {
+  title: "Pesanan Saya",
+  description:
+    "Lihat dan kelola pesanan aktif Anda di Pusat Bisnis UIN Raden Fatah.",
+};
+
 type BookingRow = Tables<"bookings">;
 export interface BookingWithService extends BookingRow {
   service: {
