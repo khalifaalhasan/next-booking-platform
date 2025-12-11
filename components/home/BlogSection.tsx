@@ -1,93 +1,140 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import FadeIn from "@/components/ui/FadeIn";
 import { Button } from "@/components/ui/button";
+import { formatDateIndo } from "@/lib/utils";
+import { Tables } from "@/types/supabase";
+import SectionHeader from "../ui/SectionHeader";
 
-const dummyPosts = [
-  {
-    id: 1,
-    title: "Tips Memilih Gedung Pernikahan yang Tepat di Palembang",
-    excerpt: "Menentukan lokasi pernikahan adalah langkah awal yang krusial. Simak tips berikut agar tidak salah pilih.",
-    date: "28 Nov 2025",
-    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=800&auto=format&fit=crop",
-    category: "Tips & Trik"
-  },
-  {
-    id: 2,
-    title: "Prosedur Peminjaman Kendaraan Operasional UIN",
-    excerpt: "Panduan lengkap bagi civitas akademika yang ingin meminjam kendaraan dinas untuk kegiatan resmi.",
-    date: "25 Nov 2025",
-    image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=800&auto=format&fit=crop",
-    category: "Panduan"
-  },
-  {
-    id: 3,
-    title: "Fasilitas Baru di Auditorium Utama",
-    excerpt: "Kami baru saja memperbarui sound system dan pencahayaan di Auditorium Utama untuk pengalaman acara yang lebih baik.",
-    date: "20 Nov 2025",
-    image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=800&auto=format&fit=crop",
-    category: "Berita"
-  }
-];
+type Post = Tables<"posts">;
 
-export default function BlogSection() {
+export default function BlogSection({ posts }: { posts: Post[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  if (!posts || posts.length === 0) return null;
+
+  // Logic Scroll Button
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      // Geser sebesar lebar kartu + gap (sekitar 350px - 400px)
+      const scrollAmount = 380;
+
+      if (direction === "left") {
+        current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+      } else {
+        current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      }
+    }
+  };
+
   return (
-    <section className="py-24 bg-white border-t border-slate-100">
+    <section className="py-24 bg-white border-t border-slate-100 relative overflow-hidden">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        <FadeIn className="flex justify-between items-end mb-12">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Artikel Terbaru</h2>
-            <p className="text-slate-500">Informasi dan berita seputar kegiatan kampus.</p>
-          </div>
-          <Link href="/blog" className="hidden md:flex items-center gap-2 text-blue-600 font-bold hover:underline">
-            Lihat Semua <ArrowRight className="w-4 h-4" />
-          </Link>
-        </FadeIn>
+        <SectionHeader
+          title="Dari Blog Kami"
+          subtitle="Tips, berita, dan wawasan terbaru seputar penyewaan aset bisnis."
+          badge="Artikel terbaru"
+          action={{ href: "/blog", label: "Lihat Semua Artikel" }}
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {dummyPosts.map((post, idx) => (
-            <FadeIn key={post.id} delay={idx * 0.1} className="h-full">
-              <Link href={`/blog/${post.id}`} className="group flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
-                <div className="relative h-56 w-full rounded-2xl overflow-hidden mb-5 bg-slate-100 shadow-sm border border-slate-100">
-                  <Image 
-                    src={post.image} 
-                    alt={post.title} 
-                    fill 
-                    className="object-cover group-hover:scale-105 transition duration-500"
-                  />
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-700 shadow-sm">
-                    {post.category}
-                  </div>
-                </div>
-                <div className="flex-1 flex flex-col">
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                        <Calendar className="w-3 h-3" /> {post.date}
+        {/* --- SCROLLABLE CONTENT --- */}
+        <div className="relative -mx-4 px-4 sm:mx-0 sm:px-0 group">
+          {/* - overflow-x-auto: Agar bisa discroll
+                - scrollbar-hide: Menyembunyikan scrollbar native (biar rapi)
+                - snap-x: Agar berhenti pas di tengah kartu (seperti magnet)
+             */}
+          <div
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-auto pb-12 pt-4 scrollbar-hide snap-x snap-mandatory scroll-smooth"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }} // Fallback hide scrollbar
+          >
+            {posts.map((post, idx) => (
+              <FadeIn
+                key={post.id}
+                delay={idx * 0.1}
+                className="min-w-[85%] sm:min-w-[350px] md:min-w-[380px] snap-center h-full"
+              >
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="group/card flex flex-col h-full bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:-translate-y-2 transition-all duration-500 ease-out"
+                >
+                  {/* IMAGE */}
+                  <div className="relative h-60 w-full bg-slate-100 overflow-hidden">
+                    {post.thumbnail_url ? (
+                      <Image
+                        src={post.thumbnail_url}
+                        alt={post.title}
+                        fill
+                        className="object-cover group-hover/card:scale-110 transition duration-700"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
+                        No Image
+                      </div>
+                    )}
+
+                    {/* Badge Kategori */}
+                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 shadow-sm border border-white/50">
+                      {post.category || "Umum"}
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition leading-tight">
-                        {post.title}
+                  </div>
+
+                  {/* CONTENT */}
+                  <div className="p-6 flex-1 flex flex-col relative">
+                    {/* Tanggal */}
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">
+                      <Calendar className="w-3.5 h-3.5" />{" "}
+                      {formatDateIndo(post.created_at)}
+                    </div>
+
+                    {/* Judul */}
+                    <h3 className="text-xl font-bold text-slate-900 mb-3 leading-snug group-hover/card:text-blue-600 transition-colors line-clamp-2">
+                      {post.title}
                     </h3>
-                    <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-3">
-                        {post.excerpt}
+
+                    {/* Excerpt */}
+                    <p className="text-slate-500 text-sm leading-relaxed mb-6 line-clamp-3 flex-grow">
+                      {post.content
+                        ?.replace(/<[^>]*>?/gm, "")
+                        .substring(0, 100)}
+                      ...
                     </p>
-                    <span className="mt-auto text-sm font-bold text-blue-600 group-hover:underline flex items-center gap-1">
-                        Baca Selengkapnya <ArrowRight className="w-4 h-4" />
-                    </span>
-                </div>
-              </Link>
-            </FadeIn>
-          ))}
-        </div>
-        
-        <div className="mt-10 text-center md:hidden">
-             <Link href="/blog">
-                <Button variant="outline" className="w-full">Lihat Semua Artikel</Button>
-             </Link>
+
+                    {/* Footer Card */}
+                    <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400 group-hover/card:text-blue-600 transition-colors">
+                        Baca Artikel
+                      </span>
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover/card:bg-blue-600 group-hover/card:text-white transition-all duration-300 transform group-hover/card:rotate-[-45deg]">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </FadeIn>
+            ))}
+          </div>
+
+          {/* Fade Gradient (Kanan) - Memberi ilusi ada konten lebih */}
+          <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none md:hidden z-10"></div>
         </div>
 
+        {/* Tombol Mobile Only */}
+        <div className="mt-2 text-center md:hidden">
+          <Link href="/blog">
+            <Button
+              variant="outline"
+              className="w-full rounded-full border-slate-300 text-slate-600"
+            >
+              Lihat Semua Artikel
+            </Button>
+          </Link>
+        </div>
       </div>
     </section>
   );

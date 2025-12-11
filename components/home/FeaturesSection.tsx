@@ -1,21 +1,17 @@
 import { Building2, Clock, ShieldCheck } from "lucide-react";
 import FadeIn from "@/components/ui/FadeIn";
+import SectionHeader from "../ui/SectionHeader";
 
 export default function FeaturesSection() {
   return (
     <section className="py-20 bg-white">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header Animasi */}
-        <FadeIn className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-            Kenapa Memilih Kami?
-          </h2>
-          <p className="text-slate-500 max-w-2xl mx-auto">
-            Kami menyediakan ekosistem penyewaan aset yang transparan, mudah,
-            dan aman untuk kebutuhan profesional Anda.
-          </p>
-        </FadeIn>
+        <SectionHeader
+          title="Mengapa Pilih Kami?"
+          subtitle="Kenali keunggulan layanan penyewaan aset bisnis yang kami tawarkan."
+          badge="Keunggulan kami"
+          align="center"
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Card 1 - Delay 0s */}
@@ -28,8 +24,8 @@ export default function FeaturesSection() {
                 Terverifikasi & Aman
               </h3>
               <p className="text-slate-500 leading-relaxed">
-                Semua aset dan layanan telah melalui proses verifikasi ketat untuk
-                menjamin kualitas dan keamanan transaksi Anda.
+                Semua aset dan layanan telah melalui proses verifikasi ketat
+                untuk menjamin kualitas dan keamanan transaksi Anda.
               </p>
             </div>
           </FadeIn>

@@ -4,6 +4,8 @@ import Image from "next/image";
 import { ArrowRight, Star } from "lucide-react";
 import FadeIn from "@/components/ui/FadeIn"; // Import Wrapper
 import { Button } from "@/components/ui/button";
+import SectionHeader from "../ui/SectionHeader";
+import ArrowLink from "../ui/ArrowLink";
 
 const formatRupiah = (number: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -25,20 +27,12 @@ export default async function FeaturedServices() {
   return (
     <section className="py-20 bg-slate-50/50 border-y border-slate-100">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeIn className="flex justify-between items-end mb-12">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">
-              Layanan Unggulan
-            </h2>
-            <p className="text-slate-500">Pilihan favorit minggu ini.</p>
-          </div>
-          <Link
-            href="/services"
-            className="hidden md:flex items-center gap-2 text-blue-600 font-bold hover:underline"
-          >
-            Lihat Semua <ArrowRight className="w-4 h-4" />
-          </Link>
-        </FadeIn>
+        <SectionHeader
+          title="Layanan Unggulan"
+          subtitle="Pilihan favorit minggu ini untuk kebutuhan bisnis Anda."
+          badge="Layanan kami"
+          action={{ href: "/services", label: "Lihat Semua Layanan" }}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {featuredServices?.map((service, idx) => (
