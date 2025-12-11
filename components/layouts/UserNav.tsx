@@ -14,6 +14,7 @@ import {
   User as UserIcon,
   AlertCircle,
   Frown,
+  Headset,
 } from "lucide-react";
 
 import {
@@ -292,6 +293,13 @@ export default function UserNav() {
                 <DropdownMenuItem className="cursor-pointer h-10 focus:bg-slate-50">
                   <CalendarDays className="mr-2 h-4 w-4 text-slate-500" />
                   <span>Pesanan Saya</span>
+                </DropdownMenuItem>
+              </Link>
+
+              <Link href="/help">
+                <DropdownMenuItem className="cursor-pointer h-10 focus:bg-slate-50">
+                  <Headset className="mr-2 h-4 w-4 text-slate-500" />
+                  <span>Pusat Bantuan</span>
                 </DropdownMenuItem>
               </Link>
 
