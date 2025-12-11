@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import ServiceManager from "@/components/admin/ServiceManager";
+import ServiceManager from "@/components/admin/service/ServiceManager";
 import { Tables } from "@/types/supabase";
 
 // 1. EXPORT Tipe Data ini agar bisa dipakai di ServiceManager.tsx

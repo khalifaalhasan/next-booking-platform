@@ -2,6 +2,11 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import HeroSection from "@/components/home/HeroSection"; // Load biasa (LCP Optimization)
 
+export const metadata = {
+  title: "Pusat Bisnis UIN Raden Fatah",
+  description:
+    "Pusat Pengembangan Bisnis UIN Raden Fatah Palembang - Solusi lengkap untuk kebutuhan bisnis dan pengembangan usaha Anda.",
+};
 // Lazy Load komponen di bawah layar
 const FeaturesSection = dynamic(
   () => import("@/components/home/FeaturesSection"),
