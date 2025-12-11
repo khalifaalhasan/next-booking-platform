@@ -1,38 +1,46 @@
 import { Suspense } from "react";
+import { createClient } from "@/utils/supabase/server"; // Import ini
 import dynamic from "next/dynamic";
-import HeroSection from "@/components/home/HeroSection"; // Load biasa (LCP Optimization)
+import HeroSection from "@/components/home/HeroSection";
+import SpinnerLoading from "@/components/ui/SpinnerLoading";
+import LeadersGreeting from "@/components/home/LeadersGreeting";
+import FAQSection from "@/components/home/FAQSection";
 
-export const metadata = {
-  title: "Pusat Bisnis UIN Raden Fatah",
-  description:
-    "Pusat Pengembangan Bisnis UIN Raden Fatah Palembang - Solusi lengkap untuk kebutuhan bisnis dan pengembangan usaha Anda.",
-};
-// Lazy Load komponen di bawah layar
+// ... Import Lazy Load lainnya
 const FeaturesSection = dynamic(
-  () => import("@/components/home/FeaturesSection"),
-  {
-    loading: () => <div className="h-96 bg-white" />, // Placeholder
-  }
+  () => import("@/components/home/FeaturesSection")
 );
 const FeaturedServices = dynamic(
   () => import("@/components/home/FeaturedServices")
 );
-const BlogSection = dynamic(() => import("@/components/home/BlogSection"));
+const BlogSection = dynamic(() => import("@/components/home/BlogSection")); // Pastikan ini
 const CTASection = dynamic(() => import("@/components/home/CTASection"));
 
-import SpinnerLoading from "@/components/ui/SpinnerLoading";
+export default async function Home() {
+  const supabase = await createClient();
 
-export default function Home() {
+  // FETCH DATA BLOG (Terbaru & Published)
+  // Limit 5 agar slider bisa discroll
+  const { data: latestPosts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("is_published", true)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   return (
     <div className="min-h-screen bg-white font-sans">
-      {/* Hero langsung di-render agar cepat */}
       <HeroSection />
 
-      {/* Sisanya di-stream saat user scroll */}
       <Suspense fallback={<SpinnerLoading />}>
+        <LeadersGreeting />
         <FeaturesSection />
         <FeaturedServices />
-        <BlogSection />
+
+        {/* Pass data posts ke sini */}
+        <BlogSection posts={latestPosts || []} />
+
+        <FAQSection />
         <CTASection />
       </Suspense>
     </div>
