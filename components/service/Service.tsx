@@ -61,19 +61,6 @@ export default async function ServicesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
-      {/* HEADER SECTION */}
-      <div className="bg-white border-b border-gray-200 py-12 md:py-16">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
-            Layanan & Fasilitas Kami
-          </h1>
-          <p className="text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">
-            Temukan gedung, ruang pertemuan, dan aset terbaik untuk kebutuhan
-            acara bisnis maupun personal Anda.
-          </p>
-        </div>
-      </div>
-
       {/* CONTENT SECTION PER KATEGORI */}
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
         {services.length === 0 ? (
