@@ -1,18 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Loader2, X, ImageIcon } from "lucide-react";
-import Image from "next/image";
-import { toast } from "sonner";
-
+import { useState, ChangeEvent } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -21,108 +13,160 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Tables } from "@/types/supabase";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+import { Loader2, Upload, X } from "lucide-react";
+import Image from "next/image";
 
-// SCHEMA VALIDASI
-// Kita gunakan z.string().optional() untuk bio agar aman
-const teamSchema = z.object({
-  name: z.string().min(2, "Nama wajib diisi"),
-  position: z.string().min(2, "Jabatan wajib diisi"),
-  bio: z.string().optional(), 
-  sort_order: z.coerce.number().min(0),
+// 1. Tipe Data dari Database
+interface TeamMember {
+  id: string;
+  name: string;
+  position: string;
+  bio: string | null;
+  image_url: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+// 2. Tipe Data Form
+interface TeamFormValues {
+  name: string;
+  position: string;
+  sort_order: number;
+  bio: string | null;
+}
+
+// 3. Schema Validasi Yup
+const formSchema: yup.ObjectSchema<TeamFormValues> = yup.object({
+  name: yup.string().required("Nama lengkap wajib diisi"),
+  position: yup.string().required("Jabatan wajib diisi"),
+  bio: yup.string().nullable().defined().default(null),
+  sort_order: yup
+    .number()
+    .transform((value) => (isNaN(value) ? undefined : value))
+    .required("Urutan wajib diisi")
+    .min(1, "Urutan minimal 1"),
 });
-
-type TeamFormValues = z.infer<typeof teamSchema>;
-type TeamMember = Tables<"teams">;
 
 interface TeamFormProps {
   initialData?: TeamMember | null;
-  onSuccessAction: () => void;
+  onSuccess?: () => void;
 }
 
-export default function TeamForm({ initialData, onSuccessAction }: TeamFormProps) {
+export default function TeamForm({ initialData, onSuccess }: TeamFormProps) {
   const router = useRouter();
-  const supabase = createClient();
-  
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [image, setImage] = useState<string>("");
+  const supabase = createClient();
 
+  // State khusus untuk File Upload
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    initialData?.image_url || null
+  );
+
+  // Setup Form
   const form = useForm<TeamFormValues>({
-    resolver: zodResolver(teamSchema),
+    resolver: yupResolver(formSchema),
     defaultValues: {
-      name: "",
-      position: "",
-      bio: "",
-      sort_order: 0,
+      name: initialData?.name || "",
+      position: initialData?.position || "",
+      bio: initialData?.bio || "",
+      sort_order: initialData?.sort_order || 1,
     },
   });
 
-  // Reset Form
-  useEffect(() => {
-    if (initialData) {
-      form.reset({
-        name: initialData.name,
-        position: initialData.position,
-        // Konversi null ke string kosong agar sesuai schema Zod
-        bio: initialData.bio || "", 
-        sort_order: initialData.sort_order,
-      });
-      setImage(initialData.image_url || "");
-    } else {
-      form.reset({
-        name: "",
-        position: "",
-        bio: "",
-        sort_order: 0,
-      });
-      setImage("");
-    }
-  }, [initialData, form]);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    setUploading(true);
-    const file = e.target.files[0];
-    const fileExt = file.name.split(".").pop();
-    const filePath = `teams/${Date.now()}.${fileExt}`;
-
-    try {
-      const { error } = await supabase.storage.from("images").upload(filePath, file);
-      if (error) throw error;
-      const { data } = supabase.storage.from("images").getPublicUrl(filePath);
-      setImage(data.publicUrl);
-    } catch {
-      toast.error("Gagal upload foto");
-    } finally {
-      setUploading(false);
+  // Handle saat user memilih file gambar
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validasi ukuran (opsional, misal max 2MB)
+      if (selectedFile.size > 2 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 2MB");
+        return;
+      }
+      setFile(selectedFile);
+      setPreviewUrl(URL.createObjectURL(selectedFile)); // Buat preview lokal
     }
   };
 
-  const onSubmit = async (values: TeamFormValues) => {
-    setLoading(true);
+  // Handle hapus gambar (opsional)
+  const handleRemoveImage = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    // Reset value input file secara manual jika perlu (via ref), tapi state cukup
+  };
+
+  const onSubmit: SubmitHandler<TeamFormValues> = async (values) => {
     try {
-      // Payload ke DB (bio boleh null)
-      const payload = { 
-          name: values.name,
-          position: values.position,
-          bio: values.bio || null, 
-          sort_order: values.sort_order,
-          image_url: image || null 
+      setLoading(true);
+
+      let finalImageUrl = initialData?.image_url || null;
+
+      // 1. PROSES UPLOAD GAMBAR (Jika ada file baru dipilih)
+      if (file) {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}.${fileExt}`; // Nama file unik
+        const filePath = `teams/${fileName}`; // Folder 'teams' di dalam bucket
+
+        // Upload ke Supabase Storage (Pastikan bucket 'images' sudah dibuat)
+        const { error: uploadError } = await supabase.storage
+          .from("images") // Ganti dengan nama bucket Anda
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // Ambil URL Publik
+        const { data: urlData } = supabase.storage
+          .from("images")
+          .getPublicUrl(filePath);
+
+        finalImageUrl = urlData.publicUrl;
+      } else if (previewUrl === null) {
+        // Jika user menghapus gambar (klik silang), set null
+        finalImageUrl = null;
+      }
+
+      // 2. PERSIAPAN PAYLOAD DB
+      const payload = {
+        name: values.name,
+        position: values.position,
+        bio: values.bio === "" ? null : values.bio,
+        sort_order: values.sort_order,
+        image_url: finalImageUrl,
       };
-      
+
+      // 3. SIMPAN KE DATABASE
       if (initialData) {
-        await supabase.from("teams").update(payload).eq("id", initialData.id);
-        toast.success("Data tim diperbarui");
+        // --- UPDATE ---
+        const { error } = await supabase
+          .from("teams")
+          .update(payload)
+          .eq("id", initialData.id);
+        if (error) throw error;
+        toast.success("Data berhasil diperbarui");
       } else {
-        await supabase.from("teams").insert(payload);
-        toast.success("Anggota tim ditambahkan");
+        // --- INSERT ---
+        const { error } = await supabase.from("teams").insert([payload]);
+        if (error) throw error;
+        toast.success("Tim baru berhasil ditambahkan");
       }
 
       router.refresh();
-      onSuccessAction();
-    } catch {
-      toast.error("Terjadi kesalahan saat menyimpan");
+
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error: unknown) {
+      console.error(error);
+      let message = "Terjadi kesalahan";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -131,70 +175,122 @@ export default function TeamForm({ initialData, onSuccessAction }: TeamFormProps
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        
-        {/* Upload Foto UI */}
-        <div className="flex justify-center mb-4">
-             <div className="relative w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden group hover:border-blue-400 transition cursor-pointer">
-                {image ? (
-                    <>
-                        <Image src={image} alt="Profile" fill className="object-cover" />
-                        <button type="button" onClick={() => setImage("")} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition z-10"><X className="h-3 w-3" /></button>
-                    </>
-                ) : (
-                    <div className="text-center text-slate-400">
-                        {uploading ? <Loader2 className="w-6 h-6 animate-spin mx-auto"/> : <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />}
-                        <span className="text-[10px]">Upload Foto</span>
-                    </div>
-                )}
-                {!image && !uploading && <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleUpload} />}
-             </div>
+        {/* --- SECTION UPLOAD FOTO --- */}
+        <div className="space-y-2">
+          <FormLabel>Foto Profil</FormLabel>
+          <div className="flex items-start gap-4">
+            {/* Preview Area */}
+            <div className="relative w-24 h-24 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+              {previewUrl ? (
+                <>
+                  <Image
+                    src={previewUrl}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  {/* Tombol Hapus Gambar */}
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl shadow hover:bg-red-600 transition"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <Upload className="w-8 h-8 text-slate-300" />
+              )}
+            </div>
+
+            {/* Input File */}
+            <div className="flex-1">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="cursor-pointer file:cursor-pointer file:text-blue-600 file:font-medium"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Format: JPG, PNG. Maks 2MB. Disarankan rasio 1:1 (Kotak).
+              </p>
+            </div>
+          </div>
         </div>
+
+        {/* --- FIELD NAMA --- */}
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nama Lengkap</FormLabel>
+              <FormControl>
+                <Input placeholder="Nama..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="grid grid-cols-2 gap-4">
-            <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Nama Lengkap</FormLabel>
-                    <FormControl><Input placeholder="Dr. Fulan..." {...field} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-            )} />
-            <FormField control={form.control} name="position" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Jabatan</FormLabel>
-                    <FormControl><Input placeholder="Kepala Pusat..." {...field} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-            )} />
-        </div>
-
-        <FormField control={form.control} name="bio" render={({ field }) => (
-            <FormItem>
-                <FormLabel>Bio Singkat</FormLabel>
-                {/* Pastikan value selalu string (default "") */}
-                <FormControl><Textarea className="h-20" placeholder="Deskripsi singkat..." {...field} value={field.value || ""} /></FormControl>
-                <FormMessage />
-            </FormItem>
-        )} />
-
-        <FormField control={form.control} name="sort_order" render={({ field }) => (
-            <FormItem>
-                <FormLabel>Urutan Tampil</FormLabel>
+          {/* --- FIELD JABATAN --- */}
+          <FormField
+            control={form.control}
+            name="position"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Jabatan</FormLabel>
                 <FormControl>
-                    <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={e => field.onChange(e.target.valueAsNumber)} 
-                    />
+                  <Input placeholder="Jabatan..." {...field} />
                 </FormControl>
                 <FormMessage />
-            </FormItem>
-        )} />
+              </FormItem>
+            )}
+          />
 
-        <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onSuccessAction} disabled={loading}>Batal</Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan"}
-            </Button>
+          {/* --- FIELD URUTAN --- */}
+          <FormField
+            control={form.control}
+            name="sort_order"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Urutan</FormLabel>
+                <FormControl>
+                  <Input type="number" min={1} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* --- FIELD BIO --- */}
+        <FormField
+          control={form.control}
+          name="bio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bio / Quote</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Deskripsi..."
+                  className="resize-none h-20"
+                  {...field}
+                  value={field.value || ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* --- TOMBOL SUBMIT --- */}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="submit" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {initialData ? "Simpan Perubahan" : "Tambah Anggota"}
+          </Button>
         </div>
       </form>
     </Form>
