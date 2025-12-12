@@ -1,111 +1,146 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
+  Users,
   CalendarDays,
-  Building2,
+  Briefcase,
   Tags,
   FileText,
-  LogOut,
+  Layers,
   Globe,
-  Settings,
+  LogOut,
 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
 
-// Konfigurasi Menu (Mudah ditambah)
-const NAV_ITEMS = [
-//   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Booking Masuk", href: "/admin/bookings", icon: CalendarDays },
-  { label: "Kelola Layanan", href: "/admin/services", icon: Building2 },
-  { label: "Kategori Layanan", href: "/admin/categories", icon: Tags },
-  { label: "Blog & Berita", href: "/admin/posts", icon: FileText },
-  { label: "Kategori Blog", href: "/admin/blog-categories", icon: Settings },
-];
+// 1. Definisikan tipe Props
+interface SidebarProps {
+  className?: string; // Tanda tanya (?) artinya opsional
+}
 
-export default function AdminSidebar({ className }: { className?: string }) {
+// 2. Terima props 'className' di sini
+const Sidebar = ({ className = "" }: SidebarProps) => {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
+  const menuGroups = [
+    // ... (data menu Anda tetap sama, tidak perlu diubah) ...
+    {
+      title: "MENU UTAMA",
+      items: [
+        { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+        { label: "Kelola Organisasi", href: "/admin/teams", icon: Users },
+      ],
+    },
+    {
+      title: "MENU BOOKING",
+      items: [
+        { label: "Booking Masuk", href: "/admin/booking", icon: CalendarDays },
+      ],
+    },
+    {
+      title: "MENU LAYANAN",
+      items: [
+        { label: "Kelola Layanan", href: "/admin/layanan", icon: Briefcase },
+        {
+          label: "Kategori Layanan",
+          href: "/admin/kategori-layanan",
+          icon: Tags,
+        },
+      ],
+    },
+    {
+      title: "MENU BLOG",
+      items: [
+        { label: "Blog & Berita", href: "/admin/blog", icon: FileText },
+        { label: "Kategori Blog", href: "/admin/kategori-blog", icon: Layers },
+      ],
+    },
+  ];
 
   return (
-    <div className={cn("pb-12 min-h-screen bg-white border-r border-slate-200", className)}>
-      <div className="space-y-4 py-4">
-        
-        {/* HEADER SIDEBAR */}
-        <div className="px-6 py-2">
-          <h2 className="text-lg font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-            <span className="bg-blue-600 text-white p-1 rounded-md">
-                <LayoutDashboard className="w-5 h-5" />
-            </span>
+    // 3. Tambahkan ${className} ke dalam string class yang sudah ada
+    // Hapus "fixed left-0 top-0 h-screen" jika className dari parent akan mengaturnya,
+    // ATAU biarkan dan biarkan className parent menimpa jika perlu.
+    // Biasanya untuk Mobile Header, kita butuh fleksibilitas.
+
+    <aside
+      className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform ${className}`}
+    >
+      {/* ... (Konten di dalam Sidebar tetap sama) ... */}
+
+      {/* Header Logo */}
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100/80">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/20">
+          <LayoutDashboard size={20} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col overflow-hidden">
+          <h1 className="text-base font-bold text-slate-800 leading-tight">
             Admin Panel
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">UPT Pusat Pengembangan Bisnis</p>
+          </h1>
+          <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-500 mt-0.5">
+            UPT Pengembangan Bisnis
+          </p>
         </div>
+      </div>
 
-        {/* MENU UTAMA */}
-        <div className="px-3 py-2">
-          <h3 className="mb-2 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Menu Utama
-          </h3>
-          <div className="space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname.startsWith(item.href);
+      {/* Menu List */}
+      <div className="h-full overflow-y-auto px-4 pb-20 custom-scrollbar">
+        {menuGroups.map((group, idx) => (
+          <div key={idx} className="mb-6">
+            <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {group.title}
+            </h3>
+            <ul className="space-y-1">
+              {group.items.map((item, itemIdx) => {
+                const isActive =
+                  item.href === "/admin"
+                    ? pathname === "/admin"
+                    : pathname.startsWith(item.href);
 
-              return (
-                <Link key={item.href} href={item.href} passHref>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full justify-start gap-3 font-medium",
-                      isActive 
-                        ? "bg-blue-50 text-blue-700 hover:bg-blue-100" 
-                        : "text-slate-600 hover:text-slate-900"
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4", isActive ? "text-blue-600" : "text-slate-400")} />
-                    {item.label}
-                  </Button>
-                </Link>
-              );
-            })}
+                return (
+                  <li key={itemIdx}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <item.icon size={19} />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </div>
+        ))}
 
-        {/* MENU SYSTEM */}
-        <div className="px-3 py-2">
-          <h3 className="mb-2 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        {/* Footer System */}
+        <div className="mt-8 border-t border-slate-100 pt-6">
+          <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
             Sistem
           </h3>
           <div className="space-y-1">
-             <Link href="/" target="_blank">
-                <Button variant="ghost" className="w-full justify-start gap-3 text-slate-600">
-                    <Globe className="h-4 w-4 text-slate-400" />
-                    Lihat Website
-                </Button>
-             </Link>
-             <Button 
-                variant="ghost" 
-                className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={handleLogout}
-             >
-                <LogOut className="h-4 w-4" />
-                Logout
-             </Button>
+            <Link
+              href="/"
+              className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              <Globe size={19} />
+              Lihat Website
+            </Link>
+            <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50">
+              <LogOut size={19} />
+              Logout
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
-}
+};
+
+export default Sidebar;
