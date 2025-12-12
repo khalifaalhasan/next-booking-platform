@@ -276,6 +276,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          position: string;
+          bio: string | null;
+          image_url: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          position: string;
+          bio?: string | null;
+          image_url?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          position?: string;
+          bio?: string | null;
+          image_url?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       services: {
         Row: {
           id: string;
