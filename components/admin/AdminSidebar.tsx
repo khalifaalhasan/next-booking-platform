@@ -15,11 +15,17 @@ import {
   LogOut,
 } from "lucide-react";
 
-const Sidebar = () => {
+// 1. Definisikan tipe Props
+interface SidebarProps {
+  className?: string; // Tanda tanya (?) artinya opsional
+}
+
+// 2. Terima props 'className' di sini
+const Sidebar = ({ className = "" }: SidebarProps) => {
   const pathname = usePathname();
 
-  // Struktur Data Menu
   const menuGroups = [
+    // ... (data menu Anda tetap sama, tidak perlu diubah) ...
     {
       title: "MENU UTAMA",
       items: [
@@ -54,15 +60,21 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform">
+    // 3. Tambahkan ${className} ke dalam string class yang sudah ada
+    // Hapus "fixed left-0 top-0 h-screen" jika className dari parent akan mengaturnya,
+    // ATAU biarkan dan biarkan className parent menimpa jika perlu.
+    // Biasanya untuk Mobile Header, kita butuh fleksibilitas.
+
+    <aside
+      className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform ${className}`}
+    >
+      {/* ... (Konten di dalam Sidebar tetap sama) ... */}
+
       {/* Header Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100/80">
-        {/* 1. Icon dengan Style Lebih Modern (Gradient & Shadow Halus) */}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/20">
           <LayoutDashboard size={20} strokeWidth={2} />
         </div>
-
-        {/* 2. Text Wrapper (Menggabungkan Judul & Subjudul agar rata kiri otomatis) */}
         <div className="flex flex-col overflow-hidden">
           <h1 className="text-base font-bold text-slate-800 leading-tight">
             Admin Panel
@@ -82,9 +94,6 @@ const Sidebar = () => {
             </h3>
             <ul className="space-y-1">
               {group.items.map((item, itemIdx) => {
-                // --- PERBAIKAN LOGIC ACTIVE STATE ---
-                // 1. Jika menu adalah "/admin" (Dashboard), harus sama persis (===).
-                // 2. Jika menu lain (misal "/admin/booking"), gunakan startsWith agar anak halamannya tetap aktif.
                 const isActive =
                   item.href === "/admin"
                     ? pathname === "/admin"
@@ -110,7 +119,7 @@ const Sidebar = () => {
           </div>
         ))}
 
-        {/* Footer System Menu */}
+        {/* Footer System */}
         <div className="mt-8 border-t border-slate-100 pt-6">
           <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
             Sistem
