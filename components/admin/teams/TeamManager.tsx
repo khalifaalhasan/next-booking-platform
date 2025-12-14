@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Plus, Pencil, Trash2, MoreHorizontal, User } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+  User,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +23,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -23,7 +32,7 @@ import { toast } from "sonner";
 // Import Form Child
 import TeamForm from "./TeamForm";
 
-// Definisi tipe data (Harus sama strukturnya dengan Child)
+// Definisi tipe data
 interface TeamMember {
   id: string;
   name: string;
@@ -43,19 +52,34 @@ export default function TeamManager({
   const router = useRouter();
   const supabase = createClient();
 
+  // State untuk Create & Edit
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<TeamMember | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus anggota tim ini? Tindakan ini permanen.")) return;
+  // State untuk Delete (Modal)
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<TeamMember | null>(null);
 
-    const { error } = await supabase.from("teams").delete().eq("id", id);
+  // Fungsi Eksekusi Hapus (Dipanggil dari Modal)
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
 
-    if (error) {
-      toast.error("Gagal menghapus data");
-    } else {
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .delete()
+        .eq("id", itemToDelete.id);
+
+      if (error) throw error;
+
       toast.success("Data berhasil dihapus");
       router.refresh();
+      setItemToDelete(null); // Tutup modal setelah sukses
+    } catch (error) {
+      toast.error("Gagal menghapus data");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -111,7 +135,6 @@ export default function TeamManager({
                 </div>
 
                 {/* Info Tambahan & Aksi */}
-                {/* FIX TAILWIND: pl-[4rem] diubah menjadi pl-16 */}
                 <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-16 sm:pl-0">
                   <div className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                     Urutan: {member.sort_order}
@@ -134,8 +157,10 @@ export default function TeamManager({
                       >
                         <Pencil className="w-4 h-4 mr-2" /> Edit Data
                       </DropdownMenuItem>
+
+                      {/* BUTTON HAPUS: Hanya trigger setItemToDelete */}
                       <DropdownMenuItem
-                        onClick={() => handleDelete(member.id)}
+                        onClick={() => setItemToDelete(member)}
                         className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4 mr-2" /> Hapus Data
@@ -172,6 +197,44 @@ export default function TeamManager({
             initialData={itemToEdit}
             onSuccess={() => setItemToEdit(null)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* --- DIALOG DELETE CONFIRMATION --- */}
+      <Dialog
+        open={!!itemToDelete}
+        onOpenChange={(open) => !open && setItemToDelete(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto bg-red-100 p-3 rounded-full mb-2 w-fit">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-center">
+              Hapus Anggota Ini?
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Anda akan menghapus <strong>{itemToDelete?.name}</strong>. <br />
+              Tindakan ini permanen dan tidak dapat dikembalikan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setItemToDelete(null)}
+              disabled={isDeleting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Menghapus..." : "Ya, Hapus Permanen"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
