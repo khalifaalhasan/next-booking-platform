@@ -280,7 +280,7 @@ export default function UserNav() {
               </DropdownMenuLabel>
 
               {isAdmin && (
-                <Link href="/admin/bookings">
+                <Link href="/admin/">
                   <DropdownMenuItem className="cursor-pointer mb-1 bg-blue-50 text-blue-700 focus:bg-blue-100 focus:text-blue-800 font-medium">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
