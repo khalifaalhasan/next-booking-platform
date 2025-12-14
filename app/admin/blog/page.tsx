@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import PostManager from "@/components/admin/posts/PostManager";
 import { Tables } from "@/types/supabase";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 export default async function AdminPostsPage() {
   const supabase = await createClient();
@@ -17,12 +18,10 @@ export default async function AdminPostsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Artikel & Berita
-        </h1>
-        <p className="text-slate-500 text-sm">
-          Kelola konten blog, pengumuman, dan tips.
-        </p>
+        <AdminPageHeader
+          title="Artikel & Berita"
+          description="  Kelola konten blog, pengumuman, dan tips."
+        />
       </div>
 
       <PostManager initialPosts={posts as Tables<"posts">[]} />

@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import BlogCategoryManager from "@/components/admin/posts/BlogCategoryManager";
 import { Tables } from "@/types/supabase";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 export default async function AdminBlogCategoriesPage() {
   const supabase = await createClient();
@@ -12,12 +13,10 @@ export default async function AdminBlogCategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Kategori Blog
-        </h1>
-        <p className="text-slate-500 text-sm">
-          Kelola topik dan label untuk artikel berita.
-        </p>
+        <AdminPageHeader
+          title="Kelola Kategori Blog"
+          description=" Kelola topik dan label untuk artikel berita."
+        />
       </div>
       <BlogCategoryManager
         initialCategories={(data as Tables<"blog_categories">[]) || []}
