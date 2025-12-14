@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, CheckCircle2, Clock, Banknote } from "lucide-react";
 import { Tables } from "@/types/supabase";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 // Definisikan Tipe Data Booking dengan Relasi
 type BookingWithRelations = Tables<"bookings"> & {
@@ -189,15 +190,11 @@ export default async function AdminBookingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Booking Masuk
-          </h1>
-          <p className="text-slate-500">
-            Kelola pesanan dan verifikasi pembayaran.
-          </p>
-        </div>
+      <div>
+        <AdminPageHeader
+          title="Kelola Booking Masuk"
+          description=" Kelola pesanan dan verifikasi pembayaran."
+        />
       </div>
 
       {/* TABS NAVIGATION */}
