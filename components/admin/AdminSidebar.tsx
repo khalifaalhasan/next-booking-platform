@@ -17,15 +17,13 @@ import {
 
 // 1. Definisikan tipe Props
 interface SidebarProps {
-  className?: string; // Tanda tanya (?) artinya opsional
+  className?: string;
 }
 
-// 2. Terima props 'className' di sini
 const Sidebar = ({ className = "" }: SidebarProps) => {
   const pathname = usePathname();
 
   const menuGroups = [
-    // ... (data menu Anda tetap sama, tidak perlu diubah) ...
     {
       title: "MENU UTAMA",
       items: [
@@ -36,16 +34,16 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
     {
       title: "MENU BOOKING",
       items: [
-        { label: "Booking Masuk", href: "/admin/booking", icon: CalendarDays },
+        { label: "Booking Masuk", href: "/admin/bookings", icon: CalendarDays },
       ],
     },
     {
       title: "MENU LAYANAN",
       items: [
-        { label: "Kelola Layanan", href: "/admin/layanan", icon: Briefcase },
+        { label: "Kelola Layanan", href: "/admin/services", icon: Briefcase },
         {
           label: "Kategori Layanan",
-          href: "/admin/kategori-layanan",
+          href: "/admin/service-categories",
           icon: Tags,
         },
       ],
@@ -54,22 +52,19 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
       title: "MENU BLOG",
       items: [
         { label: "Blog & Berita", href: "/admin/blog", icon: FileText },
-        { label: "Kategori Blog", href: "/admin/kategori-blog", icon: Layers },
+        {
+          label: "Kategori Blog",
+          href: "/admin/blog-categories",
+          icon: Layers,
+        },
       ],
     },
   ];
 
   return (
-    // 3. Tambahkan ${className} ke dalam string class yang sudah ada
-    // Hapus "fixed left-0 top-0 h-screen" jika className dari parent akan mengaturnya,
-    // ATAU biarkan dan biarkan className parent menimpa jika perlu.
-    // Biasanya untuk Mobile Header, kita butuh fleksibilitas.
-
     <aside
       className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform ${className}`}
     >
-      {/* ... (Konten di dalam Sidebar tetap sama) ... */}
-
       {/* Header Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100/80">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/20">
@@ -94,10 +89,13 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
             </h3>
             <ul className="space-y-1">
               {group.items.map((item, itemIdx) => {
+                // --- LOGIC PERBAIKAN START ---
                 const isActive =
                   item.href === "/admin"
                     ? pathname === "/admin"
-                    : pathname.startsWith(item.href);
+                    : pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
+                // --- LOGIC PERBAIKAN END ---
 
                 return (
                   <li key={itemIdx}>
