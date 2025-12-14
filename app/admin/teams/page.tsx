@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import TeamManager from "@/components/admin/teams/TeamManager";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 export default async function AdminTeamsPage() {
   const supabase = await createClient();
@@ -11,12 +12,10 @@ export default async function AdminTeamsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Struktur Organisasi
-        </h1>
-        <p className="text-slate-500 text-sm">
-          Kelola profil pimpinan dan staff.
-        </p>
+        <AdminPageHeader
+          title="Struktur Organisasi"
+          description="Kelola profil pimpinan, staff, dan urutan tampilan di website."
+        />
       </div>
       <TeamManager initialTeams={teams || []} />
     </div>

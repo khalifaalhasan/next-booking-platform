@@ -11,6 +11,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentBookingTable } from "@/components/dashboard/RecentBookingTable";
 import { Database } from "@/types/supabase";
 import Link from "next/link";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 // Definisi tipe data untuk props Tabel
 type BookingWithRelations = {
@@ -84,10 +85,11 @@ export default async function DashboardPage() {
     <div className="p-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-slate-500">
-          Ringkasan aktivitas UPT Pusat Pengembangan Bisnis.
-        </p>
+        <AdminPageHeader
+          title="Dashboard"
+          description="Ringkasan aktivitas UPT Pusat Pengembangan Bisnis."
+          />
+        
       </div>
 
       {/* --- STAT CARDS (REAL DATA) --- */}

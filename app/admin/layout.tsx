@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 
 export default async function AdminLayout({
   children,
@@ -38,6 +39,7 @@ export default async function AdminLayout({
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 md:ml-64 min-h-screen transition-all duration-300 ease-in-out">
+        <AdminHeader />
         <div className="container max-w-7xl mx-auto p-4 md:p-8 pt-6">
           {children}
         </div>
