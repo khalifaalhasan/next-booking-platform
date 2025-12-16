@@ -32,8 +32,6 @@ import {
   ArrowRight,
   Plus,
   Minus,
-  Info,
-  AlertTriangle,
 } from "lucide-react";
 
 // --- CUSTOM CSS ---
@@ -226,6 +224,7 @@ export default function ServiceHeader({
 
   const handleDayClick = (date: Date) => {
     const currentHour = startDate ? startDate.getHours() : 8;
+    // Menit selalu 00
     const newStart = setMinutes(setHours(date, currentHour), 0);
     setStartDate(newStart);
     setEndDate(addHours(newStart, 1));
@@ -243,6 +242,7 @@ export default function ServiceHeader({
     setEndDate(timestamp);
   };
 
+  // Mobile Stepper (+/- 1 Jam)
   const handleMobileTimeAdjust = (
     type: "start" | "end",
     operation: "add" | "sub"
@@ -276,8 +276,6 @@ export default function ServiceHeader({
     }
   };
 
-  // --- LOGIC APPLY ---
-  // Di sini kita izinkan user "melihat" jadwal, tapi tidak lanjut ke checkout
   const handleApply = () => {
     if (service.unit === "per_day") {
       if (!range?.from || !range?.to)
@@ -289,28 +287,50 @@ export default function ServiceHeader({
       if (!isSlotAvailable(startDate, endDate))
         return toast.error("Jam sudah dipesan!");
     }
-
-    // Sukses memilih jadwal visual, tutup modal
     setIsOpen(false);
-    toast.success("Jadwal terpilih. Silakan lakukan pemesanan secara offline.");
+    toast.success("Jadwal tersimpan.");
   };
 
-  // --- LOGIC BOOKING (DISABLED) ---
   const handleSearch = () => {
-    toast.info("Pemesanan Online Nonaktif. Silakan datang langsung ke lokasi.");
+    let startStr = "",
+      endStr = "";
+    const checkStart = service.unit === "per_day" ? range?.from : startDate;
+    const checkEnd = service.unit === "per_day" ? range?.to : endDate;
+
+    if (checkStart && checkEnd) {
+      if (!isSlotAvailable(checkStart, checkEnd)) {
+        toast.error("Maaf, slot ini baru saja diambil. Pilih waktu lain.");
+        return;
+      }
+    }
+
+    if (service.unit === "per_day") {
+      if (!range?.from || !range?.to)
+        return toast.error("Pilih tanggal check-in & check-out");
+      startStr = range.from.toISOString();
+      endStr = range.to.toISOString();
+    } else {
+      if (!startDate || !endDate)
+        return toast.error("Pilih jam mulai & selesai");
+      if (isBefore(endDate, startDate)) return toast.error("Waktu tidak valid");
+      startStr = startDate.toISOString();
+      endStr = endDate.toISOString();
+    }
+    const params = new URLSearchParams({ start: startStr, end: endStr });
+    router.push(`/book/${service.slug}?${params.toString()}`);
   };
 
   const getHeaderInfo = () => {
     if (service.unit === "per_day") {
-      if (!range?.from) return "📅 Cek Ketersediaan";
-      if (!range?.to) return "📅 Pilih Tanggal Pulang";
+      if (!range?.from) return "📅 Kapan mau Check-in?";
+      if (!range?.to) return "📅 Kapan mau Check-out?";
       const days = differenceInDays(range.to, range.from) || 1;
-      return `🗓️ ${days} Malam (Estimasi)`;
+      return `✅ Sip! Total ${days} Malam terpilih`;
     } else {
-      if (!startDate || !endDate) return "🕒 Cek Slot Jam";
+      if (!startDate || !endDate) return "🕒 Pilih Jam";
       const minutes = differenceInMinutes(endDate, startDate);
       const hours = minutes / 60;
-      return `🕒 ${hours} Jam (${format(startDate, "HH:mm")} - ${format(
+      return `✅ Total ${hours} Jam (${format(startDate, "HH:mm")} - ${format(
         endDate,
         "HH:mm"
       )})`;
@@ -343,7 +363,7 @@ export default function ServiceHeader({
   return (
     <>
       <style>{css}</style>
-      <div className=" bg-white border-b border-gray-200 shadow-sm transition-all pb-2">
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between h-auto md:h-20 py-3 md:py-0 gap-4">
             {/* 1. INFO SERVICE */}
@@ -367,7 +387,7 @@ export default function ServiceHeader({
               </div>
             </div>
 
-            {/* 2. INPUT TRIGGER (ACTIVE for Checking) */}
+            {/* 2. INPUT TRIGGER */}
             <div className="w-full md:flex-1 relative" ref={containerRef}>
               <div
                 className="flex items-center border border-gray-300 rounded-full p-1 cursor-pointer hover:shadow-md transition bg-white"
@@ -466,7 +486,7 @@ export default function ServiceHeader({
                     </div>
 
                     <div className="flex flex-col md:flex-row h-full max-h-[75vh] md:max-h-none">
-                      {/* KALENDER (Tetap Aktif untuk View) */}
+                      {/* 1. KALENDER */}
                       <div
                         className={`p-4 flex justify-center items-start border-b md:border-b-0 md:border-r border-gray-100 ${
                           service.unit === "per_day" ? "w-full" : "md:w-auto"
@@ -501,7 +521,7 @@ export default function ServiceHeader({
                         )}
                       </div>
 
-                      {/* JAM SELECTOR */}
+                      {/* 2. JAM SELECTOR */}
                       {service.unit === "per_hour" && (
                         <div className="flex flex-col w-full md:w-auto md:flex-row md:divide-x divide-gray-100 h-full md:h-80">
                           <div className="flex md:hidden p-2 bg-gray-50 gap-2 border-b border-gray-100 shrink-0">
@@ -553,6 +573,15 @@ export default function ServiceHeader({
                                     ? format(endDate, "HH:mm")
                                     : "--:--"}
                                 </span>
+                                <span className="block text-xs text-gray-500 mt-1">
+                                  {mobileTimeTab === "start"
+                                    ? startDate
+                                      ? format(startDate, "dd MMM")
+                                      : "-"
+                                    : endDate
+                                    ? format(endDate, "dd MMM")
+                                    : "-"}
+                                </span>
                               </div>
                               <button
                                 onClick={() =>
@@ -565,7 +594,7 @@ export default function ServiceHeader({
                             </div>
                           </div>
 
-                          {/* Desktop Lists */}
+                          {/* Desktop Lists (1 JAM) */}
                           <div className="hidden md:flex flex-1 p-0 flex-col w-36 h-full">
                             <div className="p-3 bg-white sticky top-0 border-b font-bold text-xs text-gray-500 uppercase text-center z-10">
                               Mulai
@@ -626,6 +655,7 @@ export default function ServiceHeader({
                                       onClick={() =>
                                         handleEndTimestampClick(timeObj)
                                       }
+                                      // FIX: CSS CONFLICT (Hapus 'flex' di sini)
                                       className={`w-full py-2 text-sm rounded-md transition block text-center flex-col md:flex-row items-center justify-center gap-1 ${
                                         isConflict
                                           ? "opacity-30 cursor-not-allowed text-red-400 line-through"
@@ -656,13 +686,19 @@ export default function ServiceHeader({
                       )}
                     </div>
 
-                    {/* --- FOOTER: KONFIRMASI (Text Only) --- */}
+                    {/* --- FOOTER: KONFIRMASI & LEGEND --- */}
                     <div className="p-3 bg-gray-50 border-t border-gray-100 flex flex-col-reverse md:flex-row items-center justify-between gap-4 shrink-0">
                       <div className="flex gap-3 text-[10px] md:text-xs text-gray-500 pl-2 w-full md:w-auto justify-center md:justify-start">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>{" "}
                           Pilih
                         </div>
+                        {service.unit === "per_hour" && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-600"></div>{" "}
+                            Selesai
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>{" "}
                           Penuh
@@ -678,7 +714,7 @@ export default function ServiceHeader({
                         className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 px-6 rounded-lg transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
                       >
                         <Check className="w-4 h-4" />
-                        Tutup & Lihat Jadwal
+                        Terapkan
                       </button>
                     </div>
                   </div>
@@ -686,39 +722,13 @@ export default function ServiceHeader({
               )}
             </div>
 
-            {/* 3. BUTTON BOOKING (DISABLED + INFO DIBAWAHNYA) */}
-            <div className="w-full md:w-auto flex flex-col items-center md:items-end">
+            <div className="w-full md:w-auto">
               <button
-                disabled
                 onClick={handleSearch}
-                className="w-full md:w-auto bg-slate-300 text-slate-500 font-bold py-3 px-8 rounded-full shadow-none cursor-not-allowed transition"
+                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition active:scale-95"
               >
-                Booking Online
+                Booking
               </button>
-              {/* INFO TAMBAHAN DIBAWAH TOMBOL */}
-              <span className="text-[10px] text-red-500 font-medium mt-1 text-center md:text-right">
-                *Hanya Tersedia Offline (Datang Langsung)
-              </span>
-            </div>
-          </div>
-
-          {/* 4. ALERT BANNER DIBAWAH HEADER (STATIS) */}
-          <div className="mt-2 mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
-            <div className="bg-yellow-100 p-1.5 rounded-full text-yellow-600 shrink-0">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <div className="text-sm text-yellow-800">
-              <p className="font-bold mb-0.5">Booking Online Dinonaktifkan</p>
-              <p className="text-xs leading-relaxed opacity-90">
-                Sistem pembayaran sedang dalam proses integrasi dengan Billing.
-                Silakan gunakan kalender di atas untuk{" "}
-                <strong>cek ketersediaan jadwal</strong>, lalu lakukan pemesanan
-                secara langsung di kantor UPT.
-              </p>
-              <p className="text-[10px] text-yellow-600 mt-1 italic">
-                *Catatan: Jadwal yang tampil mungkin belum tersinkronisasi 100%
-                dengan data penyewaan offline terbaru.
-              </p>
             </div>
           </div>
         </div>
