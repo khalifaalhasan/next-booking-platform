@@ -343,7 +343,7 @@ export default function ServiceHeader({
   return (
     <>
       <style>{css}</style>
-      <div className="sticky top-20 z-100 bg-white border-b border-gray-200 shadow-sm transition-all pb-2">
+      <div className=" bg-white border-b border-gray-200 shadow-sm transition-all pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between h-auto md:h-20 py-3 md:py-0 gap-4">
             {/* 1. INFO SERVICE */}
