@@ -306,6 +306,44 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      catalogs: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          pdf_url: string;
+          thumbnail_url: string | null;
+          is_active: boolean;
+          published_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string; // Optional karena default gen_random_uuid()
+          title: string;
+          description?: string | null;
+          pdf_url: string;
+          thumbnail_url?: string | null;
+          is_active?: boolean; // Optional karena default true
+          published_at?: string; // Optional karena default now()
+          created_at?: string; // Optional karena default now()
+          updated_at?: string; // Optional karena default now()
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          pdf_url?: string;
+          thumbnail_url?: string | null;
+          is_active?: boolean;
+          published_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+        // Saat ini kosong karena tidak ada Foreign Key (misal: category_id)
+      };
       services: {
         Row: {
           id: string;

@@ -69,12 +69,12 @@ export default function HeroSection() {
               Cari Layanan & Booking
             </Button>
           </Link>
-          <Link href="/about">
+          <Link href="/catalogs">
             <Button
               variant="outline"
               className="h-12 px-8 rounded-full text-base font-medium border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-all"
             >
-              Tentang Kami
+              Lihat Katalog
             </Button>
           </Link>
         </motion.div>
