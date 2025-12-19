@@ -13,6 +13,7 @@ import {
   Layers,
   Globe,
   LogOut,
+  NotebookPen,
 } from "lucide-react";
 
 // 1. Definisikan tipe Props
@@ -29,6 +30,7 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
       items: [
         { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
         { label: "Kelola Organisasi", href: "/admin/teams", icon: Users },
+        { label: "Kelola Katalog", href: "/admin/catalogs", icon: NotebookPen },
       ],
     },
     {
