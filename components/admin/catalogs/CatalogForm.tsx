@@ -31,7 +31,7 @@ type Catalog = Tables<"catalogs">;
 const catalogSchema = z.object({
   title: z.string().min(2, "Judul minimal 2 karakter"),
   description: z.string().optional(),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(),
 });
 
 type CatalogFormValues = z.infer<typeof catalogSchema>;
