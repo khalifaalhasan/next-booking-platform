@@ -344,6 +344,42 @@ export interface Database {
         Relationships: [];
         // Saat ini kosong karena tidak ada Foreign Key (misal: category_id)
       };
+      events: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          location: string | null
+          event_date: string | null
+          thumbnail_url: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          location?: string | null
+          event_date?: string | null
+          thumbnail_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          location?: string | null
+          event_date?: string | null
+          thumbnail_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           id: string;
