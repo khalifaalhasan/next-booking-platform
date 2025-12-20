@@ -22,6 +22,9 @@ import {
   BookOpen,
   Tags,
   Newspaper,
+  CalendarPlus2,
+  NotebookPen,
+  FileText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,7 +51,7 @@ import { DialogTitle } from "@/components/ui/dialog";
 type SearchResult = {
   id: string;
   title: string;
-  type: "service" | "team" | "catalog" | "menu";
+  type: "service" | "team" | "catalog" | "menu" | "event";
   url: string;
   description?: string;
 };
@@ -78,41 +81,48 @@ const STATIC_MENUS: SearchResult[] = [
   },
   {
     id: "nav-4",
+    title: "Kelola Kegiatan",
+    type: "menu",
+    url: "/admin/events",
+    description: "Managemen Kegiatan",
+  },
+  {
+    id: "nav-5",
     title: "Booking Masuk",
     type: "menu",
     url: "/admin/bookings",
     description: "Verifikasi pesanan masuk",
   },
   {
-    id: "nav-5",
+    id: "nav-6",
     title: "Kelola Layanan",
     type: "menu",
     url: "/admin/services",
     description: "Daftar produk & jasa",
   },
   {
-    id: "nav-6",
+    id: "nav-7",
     title: "Kategori Layanan",
     type: "menu",
     url: "/admin/service-categories",
     description: "Grouping layanan",
   },
   {
-    id: "nav-7",
+    id: "nav-8",
     title: "Blog & Berita",
     type: "menu",
     url: "/admin/blogs",
     description: "Artikel & konten berita",
   },
   {
-    id: "nav-8",
+    id: "nav-9",
     title: "Kategori Blog",
     type: "menu",
     url: "/admin/blog-categories",
     description: "Grouping artikel",
   },
   {
-    id: "nav-9",
+    id: "nav-10",
     title: "Lihat Website",
     type: "menu",
     url: "/",
@@ -217,6 +227,11 @@ export default function AdminHeader() {
           .select("id, name, position")
           .ilike("name", `%${query}%`)
           .limit(3);
+        const { data: events } = await supabase
+          .from("events")
+          .select("id, title")
+          .ilike("name", `%${query}%`)
+          .limit(3);
 
         // --- FIX TYPESCRIPT ERROR DI SINI ---
         // Kita tambahkan 'pdf_url' di select agar tidak error saat di-map
@@ -241,6 +256,14 @@ export default function AdminHeader() {
             url: `/admin/teams`,
             description: "Anggota Tim",
           })) || []),
+          ...(events?.map((e) => ({
+            id: e.id,
+            title: `${e.title}`,
+            type: "event" as const,
+            url: `/admin/events`,
+            description: "Acara",
+          })) || []),
+
           ...(catalogs?.map((c) => ({
             id: c.id,
             title: c.title,
@@ -281,10 +304,11 @@ export default function AdminHeader() {
       return <LayoutDashboard className="mr-2 h-4 w-4" />;
     if (url.includes("bookings"))
       return <CalendarDays className="mr-2 h-4 w-4" />;
-    if (url.includes("catalogs")) return <BookOpen className="mr-2 h-4 w-4" />;
+    if (url.includes("events")) return <CalendarPlus2 className="mr-2 h-4 w-4" />;
+    if (url.includes("catalogs")) return <NotebookPen className="mr-2 h-4 w-4" />;
     if (url.includes("teams")) return <Users className="mr-2 h-4 w-4" />;
     if (url.includes("services")) return <Briefcase className="mr-2 h-4 w-4" />;
-    if (url.includes("blog")) return <Newspaper className="mr-2 h-4 w-4" />;
+    if (url.includes("blog")) return <FileText className="mr-2 h-4 w-4" />;
     if (url.includes("categories")) return <Tags className="mr-2 h-4 w-4" />;
     return <ChevronRight className="mr-2 h-4 w-4" />;
   };
