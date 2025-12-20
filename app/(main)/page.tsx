@@ -5,6 +5,7 @@ import HeroSection from "@/components/home/HeroSection";
 import SpinnerLoading from "@/components/ui/SpinnerLoading";
 import LeadersGreeting from "@/components/home/LeadersGreeting";
 import FAQSection from "@/components/home/FAQSection";
+import LatestEvents from "@/components/home/LatestEvent";
 
 // ... Import Lazy Load lainnya
 const FeaturesSection = dynamic(
@@ -38,6 +39,7 @@ export default async function Home() {
         <FeaturedServices />
 
         {/* Pass data posts ke sini */}
+        <LatestEvents />
         <BlogSection posts={latestPosts || []} />
 
         <FAQSection />
