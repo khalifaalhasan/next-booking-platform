@@ -41,7 +41,7 @@ export default function HeroSection() {
         >
           Pusat Pengembangan Bisnis <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-            Mudah, Cepat & Transparan
+            UIN Raden Fatah Palembang
           </span>
         </motion.h1>
 
