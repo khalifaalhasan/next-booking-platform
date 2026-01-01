@@ -1,0 +1,31 @@
+name: Deploy ke Server UIN
+
+on:
+  push:
+    branches:
+      - main  # Atau 'master', sesuaikan branch utama kamu
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: 22
+          script: |
+            # Masuk ke folder project (PENTING: Sesuaikan path ini!)
+            cd /root/next-booking-platform
+            
+            # Tarik kodingan terbaru
+            git pull origin main
+            
+            # Install & Build
+            npm install
+            npm run build
+            
+            # Restart aplikasi
+            pm2 restart 0
