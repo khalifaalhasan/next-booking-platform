@@ -1,31 +1,29 @@
-name: Deploy ke Server UIN
+name: Deploy via Self-Hosted Runner
 
 on:
   push:
     branches:
-      - main  # Atau 'master', sesuaikan branch utama kamu
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # <--- INI KUNCINYA (Server Anda sendiri)
+    
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: 22
-          script: |
-            # Masuk ke folder project (PENTING: Sesuaikan path ini!)
-            cd /root/next-booking-platform
-            
-            # Tarik kodingan terbaru
-            git pull origin main
-            
-            # Install & Build
-            npm install
-            npm run build
-            
-            # Restart aplikasi
-            pm2 restart 0
+      - name: Ambil Kodingan Terbaru
+        uses: actions/checkout@v3
+      
+      - name: Install & Build
+        run: |
+          # Masuk folder project (Pastikan path ini BENAR)
+          cd /root/next-booking-platform
+          
+          # Tarik update
+          git pull origin main
+          
+          # Install & Build
+          npm install
+          npm run build
+          
+          # Restart PM2
+          pm2 restart 0
