@@ -1,4 +1,4 @@
-"use client"; // Ubah jadi Client Component untuk usePathname
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -36,14 +36,9 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import Image from "next/image";
 
-// Tipe Data
-type ServiceLite = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
+type ServiceLite = { id: string; name: string; slug: string };
 type CategoryWithServices = {
   id: string;
   name: string;
@@ -56,13 +51,11 @@ export function Navbar() {
   const pathname = usePathname();
   const supabase = createClient();
 
-  // State untuk Client Side Fetching (karena navbar jadi client component)
   const [categories, setCategories] = useState<CategoryWithServices[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    // Fetch Categories
     const getCategories = async () => {
       const { data } = await supabase
         .from("categories")
@@ -71,7 +64,6 @@ export function Navbar() {
       if (data) setCategories(data as unknown as CategoryWithServices[]);
     };
 
-    // Fetch User
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
@@ -80,14 +72,12 @@ export function Navbar() {
     getCategories();
     getUser();
 
-    // Auth Listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
       }
     );
 
-    // Scroll Listener untuk Shadow Effect
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -102,32 +92,26 @@ export function Navbar() {
   const validCategories = categories.filter(
     (cat) => cat.services && cat.services.length > 0
   );
-
   const initials = user?.email?.substring(0, 2).toUpperCase() || "U";
-
-  // Helper Class untuk Active Link
   const getLinkClass = (path: string) => {
     const isActive = pathname === path;
-    return `relative text-sm font-medium transition-colors duration-300 hover:text-blue-600 
-      ${isActive ? "text-blue-600 font-bold" : "text-slate-600"}
-      after:content-[''] after:absolute after:left-0 after:bottom-[-4px] after:h-[2px] after:bg-blue-600 after:transition-all after:duration-300
-      ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}
-    `;
+    return `relative text-sm font-medium transition-colors duration-300 hover:text-blue-600 ${
+      isActive ? "text-blue-600 font-bold" : "text-slate-600"
+    } after:content-[''] after:absolute after:left-0 after:bottom-[-4px] after:h-[2px] after:bg-blue-600 after:transition-all after:duration-300 ${
+      isActive ? "after:w-full" : "after:w-0 hover:after:w-full"
+    }`;
   };
 
   return (
-    // PERBAIKAN 1: Background Solid Putih (Hapus backdrop-blur)
     <header
       className={`sticky top-0 z-50 w-full bg-white border-b transition-all duration-300 ${
         isScrolled ? "border-gray-200 shadow-sm" : "border-transparent"
       }`}
     >
-      {/* --- BARIS 1: UTAMA --- */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20">
         <div className="flex items-center justify-between h-full gap-4">
-          {/* --- BAGIAN KIRI: HAMBURGER & LOGO --- */}
+          {/* --- KIRI: MENU MOBILE & LOGO --- */}
           <div className="flex items-center gap-3 lg:gap-8 flex-1 md:flex-none">
-            {/* 1. MOBILE MENU (SHEET) */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button
@@ -139,17 +123,14 @@ export function Navbar() {
                 </Button>
               </SheetTrigger>
 
-              {/* ISI MENU MOBILE */}
               <SheetContent
                 side="left"
                 className="w-[85vw] sm:w-[350px] p-0 flex flex-col h-full border-r-0 gap-0 bg-white"
               >
-                {/* HEADER MENU MOBILE */}
                 <div className="bg-gradient-to-br from-blue-700 to-blue-600 p-6 pt-20 text-white relative overflow-hidden shrink-0 z-10 shadow-lg">
                   <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                     <Building2 className="w-32 h-32 text-white" />
                   </div>
-
                   {user ? (
                     <div className="flex items-center gap-4 relative z-10 animate-in fade-in slide-in-from-left-4 duration-500">
                       <Avatar className="h-14 w-14 border-2 border-white/30 shadow-md shrink-0">
@@ -173,16 +154,13 @@ export function Navbar() {
                       <p className="text-sm text-blue-100 mb-2 leading-relaxed opacity-90">
                         {branding.brand.tagline}
                       </p>
-                      <SheetClose asChild>
-                        <div className="w-full">
-                          <LoginTrigger mode="mobile-sheet" />
-                        </div>
-                      </SheetClose>
+                      <div className="w-full">
+                        <LoginTrigger mode="mobile-sheet" />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* NAVIGATION LINKS MOBILE */}
                 <nav className="flex-1 overflow-y-auto p-2 space-y-1 bg-slate-50/50">
                   <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mx-2 mt-4">
                     <SheetClose asChild>
@@ -197,8 +175,6 @@ export function Navbar() {
                         <Home className="h-5 w-5 text-blue-500" /> Home
                       </Link>
                     </SheetClose>
-
-                    {/* PROMO (Coming Soon Mode) */}
                     <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-50 opacity-70 cursor-not-allowed">
                       <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
                         <TicketPercent className="h-5 w-5 text-slate-400" />{" "}
@@ -208,7 +184,6 @@ export function Navbar() {
                         SOON
                       </span>
                     </div>
-
                     <SheetClose asChild>
                       <Link
                         href="/blog"
@@ -281,72 +256,36 @@ export function Navbar() {
                     </Accordion>
                   </div>
 
-                  {/* SOSMED FOOTER MOBILE */}
-                  <div className="mt-6 mx-2 mb-2 p-4 rounded-xl bg-blue-50 border border-blue-100">
-                    <p className="text-xs font-bold text-blue-800 mb-3 uppercase tracking-wider">
-                      Hubungi Kami
-                    </p>
-                    <div className="flex gap-4">
-                      <a
-                        href={branding.socials.instagram.url}
-                        target="_blank"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Instagram className="w-5 h-5" />
-                      </a>
-                      <a
-                        href={branding.socials.facebook.url}
-                        target="_blank"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Facebook className="w-5 h-5" />
-                      </a>
-                      <a
-                        href={branding.socials.whatsapp.url}
-                        target="_blank"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Phone className="w-5 h-5" />
-                      </a>
+                  {user && (
+                    <div className="p-4 bg-white border-t border-slate-100 shrink-0 mt-6 mx-2 mb-2 rounded-xl">
+                      <form action="/auth/signout" method="post">
+                        <SheetClose asChild>
+                          <button className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition">
+                            <LogOut className="h-4 w-4" /> Keluar
+                          </button>
+                        </SheetClose>
+                      </form>
                     </div>
-                  </div>
+                  )}
                 </nav>
-
-                {/* LOGOUT (FIXED BOTTOM) */}
-                {user && (
-                  <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-                    <form action="/auth/signout" method="post">
-                      <SheetClose asChild>
-                        <button className="flex w-full items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition">
-                          <LogOut className="h-4 w-4" /> Keluar
-                        </button>
-                      </SheetClose>
-                    </form>
-                  </div>
-                )}
               </SheetContent>
             </Sheet>
 
-            {/* 2. LOGO BRANDING */}
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="bg-blue-600 p-1.5 rounded-lg text-white group-hover:bg-blue-700 transition shadow-sm shrink-0">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="hidden md:block font-extrabold text-xl tracking-tight text-slate-900 leading-none">
-                  {branding.brand.name}
-                </span>
-                <span className="md:hidden font-bold text-lg tracking-tight text-slate-900 leading-none">
-                  {branding.brand.shortName}
-                </span>
+              <div>
+                <Image
+                  src="/images/logoppbisnis.png"
+                  alt="Logo Pusat Bisnis"
+                  width={120}
+                  height={120}
+                />
               </div>
             </Link>
           </div>
 
-          {/* --- BAGIAN KANAN: MENU (DESKTOP) & LOGIN --- */}
-          <div className="flex items-center gap-3 lg:gap-8 shrink-0">
-            {/* MENU UTAMA (Desktop Only) */}
-            <nav className="hidden md:flex items-center gap-8">
+          {/* --- KANAN: MENU DESKTOP & AUTH --- */}
+          <div className="flex items-center gap-3 lg:gap-6 shrink-0">
+            <nav className="hidden md:flex items-center gap-6">
               <Link href="/" className={getLinkClass("/")}>
                 Home
               </Link>
@@ -356,8 +295,6 @@ export function Navbar() {
               <Link href="/about" className={getLinkClass("/about")}>
                 Tentang Kami
               </Link>
-
-              {/* PROMO (COMING SOON BADGE) */}
               <div
                 className="flex items-center gap-2 cursor-not-allowed opacity-60"
                 title="Segera Hadir"
@@ -371,35 +308,35 @@ export function Navbar() {
               </div>
             </nav>
 
-            <div className="hidden md:block h-6 w-px bg-gray-200"></div>
+            <div className="hidden md:block h-6 w-px bg-slate-200"></div>
 
-            {/* AUTH TRIGGER */}
             {user ? (
               <UserNav />
             ) : (
-              <>
-                <div className="hidden md:block">
-                  <LoginTrigger mode="desktop" />
-                </div>
+              <div className="flex items-center gap-2">
+                {/* Mobile: Tombol Compact */}
                 <div className="md:hidden">
-                  <LoginTrigger mode="mobile" />
+                  <LoginTrigger mode="mobile-topbar" />
                 </div>
-              </>
+                {/* Desktop: Split Login & Register */}
+                <div className="hidden md:flex items-center gap-3">
+                  <LoginTrigger mode="desktop-login" />
+                  <LoginTrigger mode="desktop-register" />
+                </div>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* --- MEGA MENU (DESKTOP) --- */}
+      {/* MEGA MENU DESKTOP */}
       <div className="hidden md:block border-t border-gray-100 bg-white relative z-40 shadow-[0_2px_3px_-1px_rgba(0,0,0,0.05)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-8 h-12">
             {validCategories.map((category) => {
-              // Cek apakah halaman yang dibuka adalah halaman services kategori ini
               const isActiveCategory =
                 pathname.includes(`/services`) &&
                 pathname.includes(category.slug);
-
               return (
                 <div
                   key={category.id}
@@ -407,13 +344,11 @@ export function Navbar() {
                 >
                   <Link
                     href={`/services?category=${category.slug}`}
-                    className={`flex items-center text-sm font-medium transition-all cursor-pointer gap-2 
-                        ${
-                          isActiveCategory
-                            ? "text-blue-600 font-bold"
-                            : "text-slate-600 group-hover:text-blue-600"
-                        }
-                    `}
+                    className={`flex items-center text-sm font-medium transition-all cursor-pointer gap-2 ${
+                      isActiveCategory
+                        ? "text-blue-600 font-bold"
+                        : "text-slate-600 group-hover:text-blue-600"
+                    }`}
                   >
                     <span className="text-base opacity-70 group-hover:opacity-100 transition">
                       {category.icon || "📂"}
@@ -427,8 +362,6 @@ export function Navbar() {
                       }`}
                     />
                   </Link>
-
-                  {/* DROPDOWN MENU */}
                   <div className="absolute left-0 top-full pt-0 invisible opacity-0 -translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
                     <div className="w-[600px] bg-white rounded-xl shadow-2xl border border-gray-100 p-0 grid grid-cols-12 overflow-hidden mt-0.5 ring-1 ring-black/5">
                       <div className="col-span-4 bg-slate-50 p-6 flex flex-col justify-between border-r border-slate-100">

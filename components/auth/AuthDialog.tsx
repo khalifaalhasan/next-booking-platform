@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  XCircle, // Icon baru untuk alert mismatch
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import Link from "next/link";
 
-// Logo Google Asli (SVG)
-const GoogleIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-5 h-5 mr-2" aria-hidden="true">
+// --- ASSETS ---
+const GoogleIcon = ({ grayscale = false }: { grayscale?: boolean }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={`w-5 h-5 ${grayscale ? "grayscale opacity-50" : ""}`}
+    aria-hidden="true"
+  >
     <path
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       fill="#4285F4"
@@ -36,50 +52,67 @@ const GoogleIcon = () => (
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultView?: "login" | "register";
 }
 
-export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+export default function AuthDialog({
+  open,
+  onOpenChange,
+  defaultView = "login",
+}: AuthDialogProps) {
   const router = useRouter();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
-  // State UI
   const [activeTab, setActiveTab] = useState("login");
-  const [isRegisterSuccess, setIsRegisterSuccess] = useState(false); // Fallback visual jika needed
+  const [isRegisterSuccess, setIsRegisterSuccess] = useState(false);
 
   // Form State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+
+  // Visibility Toggles
+  const [showLoginPass, setShowLoginPass] = useState(false);
+  const [showRegPass, setShowRegPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+
+  // Real-time Validation State
+  const isPasswordMismatch =
+    activeTab === "register" &&
+    confirmPassword.length > 0 &&
+    password !== confirmPassword;
+
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        setActiveTab(defaultView);
+        setErrorMsg("");
+        setIsRegisterSuccess(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [open, defaultView]);
 
   const resetForm = () => {
     setIsRegisterSuccess(false);
     setErrorMsg("");
-    setActiveTab("login");
     setEmail("");
     setPassword("");
+    setConfirmPassword("");
     setFullName("");
+    setShowLoginPass(false);
+    setShowRegPass(false);
+    setShowConfirmPass(false);
   };
 
-  // --- HANDLER GOOGLE LOGIN ---
   const handleGoogleLogin = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      toast.error("Gagal Login Google", { description: error.message });
-      setLoading(false);
-    }
+    // DISABLED sementara
+    toast.info("Fitur Google Login segera hadir!");
   };
 
-  // --- HANDLER LOGIN EMAIL ---
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -93,34 +126,42 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     if (error) {
       setErrorMsg(
         error.message === "Invalid login credentials"
-          ? "Email atau password salah"
+          ? "Email atau kata sandi tidak cocok."
           : error.message
       );
       setLoading(false);
     } else {
-      toast.success("Berhasil Masuk");
-      onOpenChange(false); // Tutup dialog
-      router.refresh(); // Refresh Server Component (Navbar)
+      toast.success("Selamat Datang Kembali! 👋");
+      onOpenChange(false);
+      router.refresh();
       setLoading(false);
       resetForm();
     }
   };
 
-  // --- HANDLER REGISTER (UPDATE METADATA) ---
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
 
+    // Validasi Final sebelum Submit
+    if (password !== confirmPassword) {
+      setErrorMsg("Kata sandi dan konfirmasi tidak cocok.");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMsg("Kata sandi minimal 6 karakter.");
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-          // PENTING: Set default belum terverifikasi secara custom
-          email_verified_custom: false,
-        },
+        data: { full_name: fullName, email_verified_custom: false },
       },
     });
 
@@ -130,19 +171,16 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       return;
     }
 
-    // Jika Supabase dikonfigurasi "Confirm Email" = OFF, session akan langsung ada
     if (data.session) {
-      toast.success("Pendaftaran Berhasil!", {
-        description: "Selamat datang di Pusat Bisnis.",
+      toast.success("Akun Berhasil Dibuat!", {
+        description: "Selamat bergabung di ekosistem kami.",
       });
-      onOpenChange(false); // Tutup dialog
-      router.refresh(); // Refresh agar Avatar muncul di Navbar
+      onOpenChange(false);
+      router.refresh();
       resetForm();
     } else {
-      // Jika ternyata Supabase masih minta konfirmasi email (Konfigurasi belum diubah)
       setIsRegisterSuccess(true);
     }
-
     setLoading(false);
   };
 
@@ -154,61 +192,63 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         if (!val) setTimeout(resetForm, 300);
       }}
     >
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden bg-white gap-0">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-center text-white">
-          <h2 className="text-xl font-bold">Selamat Datang</h2>
-          <p className="text-blue-100 text-sm opacity-90">
-            Masuk untuk melanjutkan pesanan
-          </p>
+      <DialogContent className="sm:max-w-[450px] p-0 gap-0 bg-white overflow-hidden border-0 shadow-2xl rounded-2xl ring-1 ring-slate-900/5">
+        {/* --- HEADER PREMIUM BLUE --- */}
+        <div className="relative overflow-hidden bg-blue-600 py-10 text-center">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+          <div className="relative z-10 px-6">
+            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">
+              {activeTab === "login"
+                ? "Halo, Partner Bisnis! 👋"
+                : "Mulai Perjalanan Anda 🚀"}
+            </h2>
+            <p className="text-blue-100 text-sm max-w-xs mx-auto leading-relaxed">
+              {activeTab === "login"
+                ? "Masuk untuk mengelola pesanan dan akses layanan eksklusif."
+                : "Bergabung sekarang untuk akselerasi pertumbuhan bisnis Anda."}
+            </p>
+          </div>
         </div>
 
-        <div className="p-6 pt-4">
-          {/* Tampilan Sukses Register (Hanya muncul jika Confirm Email ON) */}
+        <div className="p-6 md:p-8 bg-white relative">
           {isRegisterSuccess ? (
-            <div className="flex flex-col items-center text-center py-4 animate-in fade-in zoom-in duration-300">
-              <div className="bg-green-100 p-4 rounded-full mb-4">
-                <Mail className="h-8 w-8 text-green-600" />
+            <div className="flex flex-col items-center text-center py-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 ring-8 ring-green-50">
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">
-                Cek Email Anda
+              <h2 className="text-xl font-bold text-slate-900 mb-2">
+                Cek Email Masuk Anda
               </h2>
-              <p className="text-gray-500 text-sm mb-6">
-                Link verifikasi telah dikirim ke <strong>{email}</strong>.
+              <p className="text-slate-500 text-sm mb-8 leading-relaxed max-w-xs">
+                Link verifikasi telah dikirim ke{" "}
+                <span className="font-semibold text-slate-800">{email}</span>.
               </p>
               <Button
-                variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="w-full"
+                className="w-full bg-blue-600 text-white hover:bg-blue-700 h-12 rounded-xl font-medium"
               >
-                Tutup
+                Siap, Saya Cek Sekarang
               </Button>
             </div>
           ) : (
             <>
-              <div className="mb-6">
-                <Button
-                  variant="outline"
-                  className="w-full py-5 text-gray-600 font-medium border-gray-300 hover:bg-gray-50 hover:text-gray-800 transition-all shadow-sm"
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
-                  Lanjutkan dengan Google
-                </Button>
+              {/* --- GOOGLE DISABLED --- */}
+              <Button
+                variant="outline"
+                disabled
+                className="w-full h-12 bg-slate-50 text-slate-400 font-medium border-slate-200 rounded-xl flex items-center justify-center gap-3 mb-6 cursor-not-allowed opacity-70"
+              >
+                <GoogleIcon grayscale />
+                <span>Google (Segera Hadir)</span>
+              </Button>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-400">
-                      Atau email
-                    </span>
-                  </div>
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-100" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-semibold text-slate-400">
+                  <span className="bg-white px-3">Atau via Email</span>
                 </div>
               </div>
 
@@ -217,111 +257,239 @@ export default function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="login">Masuk</TabsTrigger>
-                  <TabsTrigger value="register">Daftar</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100 rounded-xl mb-6">
+                  <TabsTrigger
+                    value="login"
+                    className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all py-2.5"
+                  >
+                    Masuk
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="register"
+                    className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all py-2.5"
+                  >
+                    Daftar Baru
+                  </TabsTrigger>
                 </TabsList>
 
-                {/* --- TAB LOGIN --- */}
-                <TabsContent value="login" className="mt-0">
-                  <form onSubmit={onLogin} className="space-y-4">
+                {/* --- LOGIN FORM --- */}
+                <TabsContent
+                  value="login"
+                  className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-right-2 duration-300"
+                >
+                  <form onSubmit={onLogin} className="space-y-5">
                     {errorMsg && (
-                      <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100 flex items-start gap-2">
-                        <span>⚠️</span> <span>{errorMsg}</span>
+                      <div className="bg-red-50 text-red-600 text-xs font-medium p-3 rounded-lg border border-red-100 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />{" "}
+                        <span className="pt-0.5">{errorMsg}</span>
                       </div>
                     )}
+
                     <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        placeholder="nama@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11"
-                      />
+                      <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                        Email
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type="email"
+                          placeholder="nama@perusahaan.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          className="h-11 pl-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
+
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label>Password</Label>
-                        <span className="text-xs text-blue-600 cursor-pointer hover:underline">
-                          Lupa Password?
-                        </span>
+                        <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                          Kata Sandi
+                        </Label>
                       </div>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="h-11"
-                      />
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type={showLoginPass ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className="h-11 pl-10 pr-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowLoginPass(!showLoginPass)}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                        >
+                          {showLoginPass ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
+
                     <Button
                       type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700 h-11 text-base"
                       disabled={loading}
+                      className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all hover:shadow-blue-300 hover:-translate-y-0.5"
                     >
                       {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
-                        "Masuk Sekarang"
+                        "Masuk ke Dashboard"
                       )}
                     </Button>
                   </form>
                 </TabsContent>
 
-                {/* --- TAB REGISTER --- */}
-                <TabsContent value="register" className="mt-0">
+                {/* --- REGISTER FORM --- */}
+                <TabsContent
+                  value="register"
+                  className="mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-left-2 duration-300"
+                >
                   <form onSubmit={onRegister} className="space-y-4">
                     {errorMsg && (
-                      <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100">
-                        {errorMsg}
+                      <div className="bg-red-50 text-red-600 text-xs font-medium p-3 rounded-lg border border-red-100 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />{" "}
+                        <span className="pt-0.5">{errorMsg}</span>
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <Label>Nama Lengkap</Label>
-                      <Input
-                        placeholder="Nama Sesuai KTP"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                        className="h-11"
-                      />
+
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                        Nama Lengkap
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          placeholder="Nama sesuai identitas"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          className="h-11 pl-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        type="email"
-                        placeholder="nama@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11"
-                      />
+
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                        Email
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type="email"
+                          placeholder="nama@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          className="h-11 pl-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Password</Label>
-                      <Input
-                        type="password"
-                        placeholder="Minimal 6 karakter"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="h-11"
-                      />
+
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                        Kata Sandi
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <Input
+                          type={showRegPass ? "text" : "password"}
+                          placeholder="Min. 6 karakter"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className="h-11 pl-10 pr-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPass(!showRegPass)}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                        >
+                          {showRegPass ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-600 font-medium text-xs uppercase tracking-wide">
+                        Konfirmasi Kata Sandi
+                      </Label>
+                      <div className="relative">
+                        <Lock
+                          className={`absolute left-3.5 top-3.5 h-4 w-4 ${
+                            isPasswordMismatch
+                              ? "text-red-400"
+                              : "text-slate-400"
+                          }`}
+                        />
+                        <Input
+                          type={showConfirmPass ? "text" : "password"}
+                          placeholder="Ulangi kata sandi"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          className={`h-11 pl-10 pr-10 rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:border-blue-500 ${
+                            isPasswordMismatch
+                              ? "border-red-300 focus:ring-red-100 focus:border-red-500"
+                              : "focus:ring-blue-100"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPass(!showConfirmPass)}
+                          className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                        >
+                          {showConfirmPass ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* --- REALTIME ALERT MISMATCH --- */}
+                      {isPasswordMismatch && (
+                        <div className="flex items-center gap-2 mt-1.5 animate-in slide-in-from-top-1 fade-in duration-200">
+                          <XCircle className="w-3.5 h-3.5 text-red-500" />
+                          <span className="text-xs font-medium text-red-500">
+                            Kata sandi tidak cocok
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     <Button
                       type="submit"
-                      className="w-full bg-green-600 hover:bg-green-700 h-11 text-base"
-                      disabled={loading}
+                      disabled={loading || isPasswordMismatch}
+                      className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all hover:shadow-blue-300 hover:-translate-y-0.5 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
-                        "Daftar Akun Baru"
+                        <span className="flex items-center">
+                          Buat Akun Gratis{" "}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </span>
                       )}
                     </Button>
+
+                    <p className="text-[10px] text-slate-400 text-center px-4 leading-tight mt-2">
+                      Dengan mendaftar, Anda menyetujui{" "}
+                      <span className="underline cursor-pointer hover:text-blue-600">
+                        Syarat & Ketentuan
+                      </span>{" "}
+                      kami.
+                    </p>
                   </form>
                 </TabsContent>
               </Tabs>
