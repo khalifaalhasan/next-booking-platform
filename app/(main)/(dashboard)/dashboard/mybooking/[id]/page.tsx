@@ -23,6 +23,25 @@ import { Tables } from "@/types/supabase";
 // Import komponen Download Ticket (Client Component)
 import DownloadTicketButton from "@/components/booking/DownloadTicketButton";
 
+const getStatusColor = (status: string, paymentStatus: string) => {
+  if (status === "canceled") return "bg-red-100 text-red-700 hover:bg-red-100";
+  if (status === "confirmed" && paymentStatus === "paid") {
+    return "bg-green-100 text-green-700 hover:bg-green-100";
+  }
+  if (status === "waiting_verification") {
+    return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+  }
+  return "bg-orange-100 text-orange-700 hover:bg-orange-100";
+};
+
+const getStatusLabel = (status: string, paymentStatus: string) => {
+  if (status === "canceled") return "Dibatalkan";
+  if (status === "confirmed" && paymentStatus === "paid") return "Lunas";
+  if (paymentStatus === "partial") return "DP (Belum Lunas)";
+  if (status === "waiting_verification") return "Menunggu Verifikasi";
+  return "Menunggu Pembayaran";
+};
+
 // Tipe Data
 type ServiceWithCategory = Tables<"services"> & {
   categories: Tables<"categories"> | null;
@@ -321,22 +340,15 @@ export default async function BookingDetailPage({ params }: PageProps) {
                         </p>
                         {/* Status Badge Payment */}
                         <Badge
-                          variant={
-                            pay.status === "verified" // Fix: Sesuaikan dengan enum DB (verified/rejected)
-                              ? "default"
-                              : pay.status === "rejected"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                          className={
-                            pay.status === "verified" ? "bg-green-600" : ""
-                          }
+                          className={`${getStatusColor(
+                            booking.status ?? "pending",
+                            booking.payment_status ?? "pending"
+                          )}border-0 shadow-none`}
                         >
-                          {pay.status === "pending"
-                            ? "Menunggu Verifikasi"
-                            : pay.status === "verified"
-                            ? "Diterima"
-                            : "Ditolak"}
+                          {getStatusLabel(
+                            booking.status ?? "pending",
+                            booking.payment_status ?? "pending"
+                          )}
                         </Badge>
                       </div>
                     </div>
