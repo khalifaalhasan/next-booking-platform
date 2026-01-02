@@ -308,10 +308,12 @@ export default async function BookingDetailPage({ params }: PageProps) {
                             Transfer {pay.payment_type}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {format(
-                              new Date(pay.created_at),
-                              "dd MMM yyyy, HH:mm"
-                            )}
+                            {pay.created_at
+                              ? format(
+                                  new Date(pay.created_at),
+                                  "dd MMM yyyy HH:mm"
+                                )
+                              : "_"}
                           </p>
                         </div>
                       </div>
