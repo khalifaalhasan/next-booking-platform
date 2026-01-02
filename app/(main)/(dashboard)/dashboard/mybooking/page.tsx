@@ -36,44 +36,48 @@ const formatRupiah = (num: number) =>
   }).format(num);
 
 // --- LOGIKA LABEL STATUS (UPDATE) ---
-const getStatusLabel = (status: string, paymentStatus: string) => {
-  // Prioritas 1: Cek jika sudah DP tapi belum lunas
-  if (paymentStatus === "partial" && status !== "cancelled") {
-    return "Menunggu Pelunasan"; // Atau "DP Diterima"
-  }
+  const getStatusLabel = (
+    status: string | null,
+    paymentStatus: string | null
 
-  // Prioritas 2: Status bawaan
-  const labels: Record<string, string> = {
-    pending_payment: "Menunggu Pembayaran",
-    waiting_verification: "Sedang Diverifikasi", // User sudah upload, admin cek
-    confirmed: "E-Tiket Terbit",
-    cancelled: "Dibatalkan",
-    completed: "Selesai",
-    rejected: "Pembayaran Ditolak",
-  };
-  return labels[status] || status;
-};
+  ) => {
+    const safeStatus = status ?? "pending" 
+    const safePayment = paymentStatus ?? "pending"
+
+    const labels: Record<string, string> = {
+      pending_payment: "Menunggu Pembayaran",
+      waiting_verification: "Sedang Diverifikasi",
+      confirmed: "E-Tiket Terbit",
+      cancelled: "Dibatalkan",
+      completed: "Selesai",
+      rejected: "Pembayaran Ditolak",
+      pending: "Menunggu Pembayaran",
+      paid: "Lunas",
+      partial: "DP Dibayar",
+    };
+    return labels[safeStatus] || safeStatus;
+  }
 
 // --- LOGIKA WARNA STATUS (UPDATE) ---
-const getStatusColor = (status: string, paymentStatus: string) => {
-  if (paymentStatus === "partial" && status !== "cancelled") {
-    return "bg-yellow-100 text-yellow-700 border-yellow-200"; // Kuning untuk DP
-  }
+const getStatusColor = (status: string | null, paymentStatus: string | null) => {
 
-  switch (status) {
-    case "pending_payment":
-      return "bg-orange-100 text-orange-700 border-orange-200";
-    case "waiting_verification":
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    case "confirmed":
-      return "bg-green-100 text-green-700 border-green-200";
-    case "cancelled":
-    case "rejected":
-      return "bg-red-100 text-red-700 border-red-200";
-    default:
-      return "bg-gray-100 text-gray-700 border-gray-200";
+  const safeStatus = status ?? "pending";
+  const safePayment = paymentStatus ?? "pending";
+
+  if (safePayment === "cancelled")
+    return "bg-red-100 text-red-700 border-red-200";
+  if (safeStatus === "confirmed" && safePayment === "paid"){
+    return "bg-green-100 text-green-700 border-green-200";
   }
+  if (safePayment === "partial"){
+    return "bg-blue-100 text-blue-700 border-blue-200"; 
+  }
+  if (safeStatus === "waiting_verification"){
+    return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    }
+    return "bg-orange-100 text-orange-700 border-yellow-200";  
 };
+
 
 export default async function UserBookingsPage() {
   const supabase = await createClient();
