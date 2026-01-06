@@ -69,10 +69,12 @@ export default function CatalogGrid({ catalogs }: CatalogGridProps) {
             <div className="p-5 flex flex-col flex-1">
               <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
                 <Calendar className="w-3 h-3" />
-                {new Date(item.created_at).toLocaleDateString("id-ID", {
-                  year: "numeric",
-                  month: "long",
-                })}
+                {item.created_at
+                  ? new Date(item.created_at).toLocaleDateString("id-ID", {
+                      year: "numeric",
+                      month: "long",
+                    })
+                  : "-"}
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                 {item.title}

@@ -98,7 +98,9 @@ const BookingTable = ({ data }: { data: BookingWithRelations[] }) => (
                   #{booking.id.slice(0, 8)}
                 </span>
                 <span className="text-sm">
-                  {new Date(booking.created_at).toLocaleDateString("id-ID")}
+                  {booking.created_at
+                    ? new Date(booking.created_at).toLocaleDateString("id-ID")
+                    : "-"}
                 </span>
               </div>
             </TableCell>
@@ -136,8 +138,10 @@ const BookingTable = ({ data }: { data: BookingWithRelations[] }) => (
             </TableCell>
             <TableCell>
               <StatusBadge
-                status={booking.status}
-                payment={booking.payment_status}
+                // Kalo status null, anggap aja "pending"
+                status={booking.status ?? "pending"}
+                // Kalo payment status null, anggap aja "pending"
+                payment={booking.payment_status ?? "pending"}
               />
             </TableCell>
             <TableCell className="text-right">
