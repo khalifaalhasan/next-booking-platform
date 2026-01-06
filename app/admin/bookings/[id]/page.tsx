@@ -188,10 +188,10 @@ export default function AdminBookingDetail({ params }: PageProps) {
         );
       }
 
-     router.refresh(); // Refresh data server component
-        setTimeout(() => {
-            window.location.reload(); // Force reload browser agar state benar-benar fresh
-        }, 1000);
+      router.refresh(); // Refresh data server component
+      setTimeout(() => {
+        window.location.reload(); // Force reload browser agar state benar-benar fresh
+      }, 1000);
       // window.location.reload(); // Opsional, router.refresh biasanya cukup
       // ... kode sebelumnya
     } catch (err: unknown) {
@@ -450,12 +450,14 @@ export default function AdminBookingDetail({ params }: PageProps) {
                         }
                         className={isVerified ? "bg-green-600" : ""}
                       >
-                        {payment.status.toUpperCase()}
+                        {payment.status?.toUpperCase() ?? "PENDING"}
                       </Badge>
                     </div>
                     <p className="text-xs text-slate-400">
                       Diupload pada:{" "}
-                      {new Date(payment.created_at).toLocaleString()}
+                      {payment.created_at
+                        ? new Date(payment.created_at).toLocaleString("id-ID")
+                        : "-"}
                     </p>
                   </div>
 
