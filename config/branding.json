@@ -4,9 +4,10 @@
     "shortName": "Pusat Bisnis",
     "tagline": "Aselerasi Pertumbuhan Bisnis Anda",
     "description": "Platform terintegrasi untuk penyewaan aset, layanan bisnis, dan pengembangan UMKM.",
-    "email": "info@pusatbisnis.id",
-    "phone": "+6281234567890",
-    "address": "Jl. Sudirman No. 123, Jakarta Selatan"
+    "email": "pp_blu@radenfatah.ac.id",
+    "phone": "6281234567890",
+    "address": "Jl. Sudirman No. 123, Jakarta Selatan",
+    "whatsapp": "628127890123"
   },
   "socials": {
     "instagram": {
@@ -26,8 +27,8 @@
       "username": "@pusatbisnis"
     }
   },
-  "colors": {
-    "primary": "blue-600",
-    "secondary": "slate-900"
+
+  "meta": {
+    "defaultMessage": "Halo Admin P2B, saya ingin menanyakan ketersediaan layanan..."
   }
 }

@@ -1,4 +1,5 @@
 // app/(main)/layout.tsx
+import WhatsAppFloat from "@/components/common/WhatsappFloat";
 import Footer from "@/components/layouts/Footer";
 import { Navbar } from "@/components/layouts/Navbar";
 
@@ -14,6 +15,7 @@ export default function MainLayout({
 
       <main className="min-h-screen bg-white">{children}</main>
       <Footer />
+      <WhatsAppFloat />
     </>
   );
 }

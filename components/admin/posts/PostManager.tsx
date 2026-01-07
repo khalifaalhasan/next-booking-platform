@@ -167,7 +167,7 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
                     <Badge variant="outline">{post.category}</Badge>
                   </td>
                   <td className="px-6 py-4 text-slate-500">
-                    {formatDate(post.created_at)}
+                    {post.created_at ? formatDate(post.created_at) : "-"}
                   </td>
                   <td className="px-6 py-4 text-center">
                     {post.is_published ? (
@@ -227,7 +227,8 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
                     {post.title}
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-1">
-                    {post.category} • {formatDate(post.created_at)}
+                    {post.category} •{" "}
+                    {post.created_at ? formatDate(post.created_at) : "-"}
                   </p>
                 </div>
                 {post.is_published ? (
@@ -317,8 +318,7 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
             </div>
             <DialogTitle className="text-center">Hapus Artikel?</DialogTitle>
             <DialogDescription className="text-center">
-              Anda akan menghapus <strong>{itemToDelete?.title}</strong>.{" "}
-              <br />
+              Anda akan menghapus <strong>{itemToDelete?.title}</strong>. <br />
               Tindakan ini permanen.
             </DialogDescription>
           </DialogHeader>

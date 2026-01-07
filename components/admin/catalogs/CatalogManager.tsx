@@ -206,7 +206,9 @@ export default function CatalogManager({ initialData }: CatalogManagerProps) {
                 )}
                 <div className="mt-auto text-[10px] text-slate-400 font-mono pt-2 border-t border-slate-50">
                   Diupdate:{" "}
-                  {new Date(item.updated_at).toLocaleDateString("id-ID")}
+                  {item.updated_at
+                    ? new Date(item.updated_at).toLocaleDateString("id-ID")
+                    : "-"}
                 </div>
               </div>
             </Card>
