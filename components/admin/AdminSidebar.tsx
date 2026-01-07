@@ -15,6 +15,7 @@ import {
   LogOut,
   NotebookPen,
   CalendarPlus2,
+  BadgePercent,
 } from "lucide-react";
 
 // 1. Definisikan tipe Props
@@ -30,6 +31,12 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
       title: "MENU UTAMA",
       items: [
         { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+
+        {
+          label: "Kelola Promosi",
+          href: "/admin/promotions",
+          icon: BadgePercent,
+        },
         { label: "Kelola Organisasi", href: "/admin/teams", icon: Users },
         { label: "Kelola Katalog", href: "/admin/catalogs", icon: NotebookPen },
         {
