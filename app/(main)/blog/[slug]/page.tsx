@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, User, ArrowLeft, Share2, Eye } from "lucide-react";
+import { Calendar, User, ArrowLeft, Share2, Eye, Clock } from "lucide-react"; // Tambah Icon Clock
 import { formatDateIndo } from "@/lib/utils";
 import FadeIn from "@/components/ui/FadeIn";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +21,9 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-// --- PERBAIKAN DISINI (Tambahkan await di createClient) ---
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  const supabase = await createClient(); // <--- TAMBAH AWAIT
+  const supabase = await createClient();
 
   const { data: post } = await supabase
     .from("posts")
@@ -42,7 +41,7 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function BlogDetailPage({ params }: PageProps) {
-  const supabase = await createClient(); // Di sini sudah benar ada await
+  const supabase = await createClient();
   const { slug } = await params;
 
   // 1. Fetch Post Utama
@@ -82,107 +81,143 @@ export default async function BlogDetailPage({ params }: PageProps) {
   // Increment view count (RPC)
   await supabase.rpc("increment_post_view", { post_id: post.id });
 
+  // Estimasi waktu baca (kasar: 200 kata per menit)
+  const wordCount = post.content?.split(/\s+/).length || 0;
+  const readTime = Math.ceil(wordCount / 200);
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
       {/* Header Breadcrumb */}
-      <div className="bg-white border-b border-gray-200 py-6 sticky top-20 z-30 shadow-sm">
-        <div className="container max-w-7xl mx-auto px-4 flex items-center gap-2 text-sm text-slate-500 overflow-hidden">
-          <Link href="/" className="hover:text-blue-600 shrink-0">
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-sm backdrop-blur-md bg-white/90">
+        <div className="container max-w-7xl mx-auto px-4 py-4 flex items-center gap-2 text-sm text-slate-500 overflow-hidden">
+          <Link
+            href="/"
+            className="hover:text-blue-600 transition-colors shrink-0"
+          >
             Home
-          </Link>{" "}
-          /
-          <Link href="/blog" className="hover:text-blue-600 shrink-0">
+          </Link>
+          <span className="text-slate-300">/</span>
+          <Link
+            href="/blog"
+            className="hover:text-blue-600 transition-colors shrink-0"
+          >
             Blog
-          </Link>{" "}
-          /
-          <span className="text-slate-900 font-medium truncate">
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-900 font-medium truncate max-w-[200px] sm:max-w-md">
             {post.title}
           </span>
         </div>
       </div>
 
-      <div className="container max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div className="container max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* --- KONTEN UTAMA (LEBAR 8) --- */}
           <div className="lg:col-span-8">
             <FadeIn>
-              <article className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6 md:p-10 mb-12">
-                <div className="flex items-center gap-3 mb-6">
-                  <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 text-sm">
+              <article className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 md:p-8 lg:p-10 mb-10">
+                {/* Meta Header */}
+                <div className="flex flex-wrap items-center gap-3 mb-6">
+                  <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-xs uppercase tracking-wider rounded-md">
                     {post.category}
                   </Badge>
                   <span className="text-slate-400 text-xs flex items-center gap-1">
-                    <Eye className="w-3 h-3" /> {post.views_count || 0} Dilihat
+                    <Clock className="w-3 h-3" /> {readTime} Menit Baca
                   </span>
+                  <span className="text-slate-300 text-xs">•</span>
+                  
                 </div>
 
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                {/* Judul yang lebih proporsional */}
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 mb-6 leading-[1.2] tracking-tight">
                   {post.title}
                 </h1>
 
-                <div className="flex items-center gap-4 mb-8 text-sm text-slate-500 border-b border-slate-100 pb-8">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-slate-500" />
+                {/* Author & Date */}
+                <div className="flex items-center gap-4 mb-8 pb-8 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full flex items-center justify-center border border-blue-100">
+                      <User className="w-5 h-5 text-blue-600" />
                     </div>
-                    <span className="font-medium text-slate-700">
-                      {post.profiles?.full_name || "Admin"}
-                    </span>
-                  </div>
-                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    {formatDateIndo(post.created_at)}
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {post.profiles?.full_name || "Admin P2B"}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Calendar className="w-3 h-3" />
+                        {formatDateIndo(post.created_at)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
+                {/* Featured Image */}
                 {post.thumbnail_url && (
-                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-10 shadow-md">
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-10 shadow-sm border border-slate-100 group">
                     <Image
                       src={post.thumbnail_url}
                       alt={post.title}
                       fill
-                      className="object-cover"
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
                       priority
                     />
                   </div>
                 )}
 
+                {/* Content Body dengan Typography yang lebih bagus */}
                 <div
-                  className="prose prose-lg max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-p:text-slate-600 prose-a:text-blue-600 prose-img:rounded-xl prose-strong:text-slate-800"
+                  className="
+                    prose prose-lg max-w-none 
+                    prose-headings:font-bold prose-headings:text-slate-900 prose-headings:tracking-tight 
+                    prose-p:text-slate-600 prose-p:leading-relaxed 
+                    prose-a:text-blue-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                    prose-img:rounded-xl prose-img:shadow-md 
+                    prose-strong:text-slate-800 prose-strong:font-bold
+                    prose-ul:list-disc prose-ul:pl-5 prose-li:text-slate-600 prose-li:marker:text-blue-500
+                    prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:text-slate-700 prose-blockquote:italic
+                  "
                   dangerouslySetInnerHTML={{ __html: post.content || "" }}
                 />
 
-                <div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center">
+                {/* Share & Back */}
+                <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <Link href="/blog">
-                    <Button variant="outline" className="gap-2">
+                    <Button
+                      variant="outline"
+                      className="gap-2 rounded-full border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400"
+                    >
                       <ArrowLeft className="w-4 h-4" /> Kembali ke Blog
                     </Button>
                   </Link>
-                  {/* Tombol Share Dummy */}
                   <Button
                     variant="ghost"
-                    className="gap-2 text-slate-500 hover:text-blue-600"
+                    className="gap-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
                   >
-                    <Share2 className="w-4 h-4" /> Bagikan
+                    <Share2 className="w-4 h-4" /> Bagikan Artikel
                   </Button>
                 </div>
               </article>
 
               {/* --- BOTTOM SLIDER REKOMENDASI --- */}
-              <div className="mt-12 pt-8 border-t border-slate-200">
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Mungkin Anda Tertarik
+                  </h3>
+                </div>
                 <RecommendedSlider posts={recommendedPosts || []} />
               </div>
             </FadeIn>
           </div>
 
           {/* --- SIDEBAR (LEBAR 4) --- */}
-          <div className="lg:col-span-4">
-            {/* Pass relatedPosts DAN categories ke sidebar */}
-            <BlogDetailSidebar
-              relatedPosts={relatedPosts || []}
-              categories={categories || []}
-            />
+          <div className="lg:col-span-4 space-y-8">
+            <div className="sticky top-32">
+              <BlogDetailSidebar
+                relatedPosts={relatedPosts || []}
+                categories={categories || []}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -153,3 +153,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix untuk Tiptap/Rich Text Editor Content */
+/* Agar enter berulang kali (paragraf kosong) tetap terlihat jaraknya */
+
+.prose p:empty::before {
+  content: "\00a0"; /* Menambahkan spasi kosong (non-breaking space) */
+  display: inline-block;
+}
+
+/* ATAU cara alternatif jika Tiptap generate <p><br></p> */
+.prose p br {
+  display: block;
+  content: "";
+  margin-top: 0.5em; 
+}
