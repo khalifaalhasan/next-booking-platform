@@ -6,13 +6,15 @@ import { createClient } from "@/utils/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, X, Wand2, ImageIcon, Star } from "lucide-react";
+import { Loader2, X, Wand2, ImageIcon, Star, Calendar } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 
+// Import Komponen Editor Tiptap Baru
+import RichTextEditor from "@/components/ui/rich-text-editor";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Form,
@@ -45,7 +47,8 @@ const postSchema = z.object({
   content: z.string().min(20, "Konten terlalu pendek"),
   category: z.string().min(1, "Pilih kategori"),
   is_published: z.boolean(),
-  is_featured: z.boolean(), // Tambahan
+  is_featured: z.boolean(),
+  created_at: z.string(),
 });
 
 type PostFormValues = z.infer<typeof postSchema>;
@@ -54,6 +57,13 @@ interface PostFormProps {
   initialData?: Post | null;
   onSuccessAction: () => void;
 }
+
+const formatToLocalInput = (dateStr?: string | null) => {
+  const date = dateStr ? new Date(dateStr) : new Date();
+  const offset = date.getTimezoneOffset();
+  const adjustedDate = new Date(date.getTime() - offset * 60 * 1000);
+  return adjustedDate.toISOString().slice(0, 16);
+};
 
 export default function PostForm({
   initialData,
@@ -76,10 +86,11 @@ export default function PostForm({
       category: "",
       is_published: false,
       is_featured: false,
+      created_at: formatToLocalInput(),
     },
   });
 
-  // Fetch Kategori dari DB
+  // 1. Fetch Categories
   useEffect(() => {
     const fetchCategories = async () => {
       const { data } = await supabase
@@ -91,15 +102,17 @@ export default function PostForm({
     fetchCategories();
   }, [supabase]);
 
+  // 2. Load Initial Data (Untuk Edit)
   useEffect(() => {
     if (initialData) {
       form.reset({
         title: initialData.title,
         slug: initialData.slug,
         content: initialData.content || "",
-        category: initialData.category || "",
+        category: initialData.category || "", // <-- Pastikan ini string yang sama persis dengan di opsi
         is_published: initialData.is_published ?? false,
         is_featured: initialData.is_featured ?? false,
+        created_at: formatToLocalInput(initialData.created_at),
       });
       setThumbnail(initialData.thumbnail_url || "");
     } else {
@@ -110,6 +123,7 @@ export default function PostForm({
         category: "",
         is_published: false,
         is_featured: false,
+        created_at: formatToLocalInput(),
       });
       setThumbnail("");
     }
@@ -155,10 +169,17 @@ export default function PostForm({
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       const payload = {
-        ...values,
+        title: values.title,
+        slug: values.slug,
+        content: values.content,
+        category: values.category,
+        is_published: values.is_published,
+        is_featured: values.is_featured,
         thumbnail_url: thumbnail,
         author_id: user?.id,
+        created_at: new Date(values.created_at).toISOString(),
       };
 
       let error;
@@ -191,8 +212,8 @@ export default function PostForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-        <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-5 custom-scrollbar">
-          {/* --- COVER IMAGE --- */}
+        <div className="max-h-[70vh] overflow-y-auto pr-2 space-y-5 custom-scrollbar pb-10">
+          {/* IMAGE UPLOAD */}
           <div className="space-y-3">
             <FormLabel>Gambar Sampul</FormLabel>
             <div className="relative w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center overflow-hidden group hover:bg-slate-100 transition">
@@ -234,7 +255,6 @@ export default function PostForm({
             </div>
           </div>
 
-          {/* --- FIELDS --- */}
           <FormField
             control={form.control}
             name="title"
@@ -273,25 +293,39 @@ export default function PostForm({
                 </FormItem>
               )}
             />
-            {/* KATEGORI DINAMIS */}
+
+            {/* --- FIX SELECT KATEGORI DISINI --- */}
             <FormField
               control={form.control}
               name="category"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kategori</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  {/* FIX: Tambahkan props 'key' yang unik */}
+                  {/* Ini memaksa komponen Select di-reset ulang saat categories selesai loading */}
+                  <Select
+                    key={categories.length + (field.value || "empty")}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih" />
+                        <SelectValue placeholder="Pilih Kategori" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
+                      {categories.length > 0 ? (
+                        categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-slate-500 text-center">
+                          Memuat kategori...
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -302,19 +336,42 @@ export default function PostForm({
 
           <FormField
             control={form.control}
-            name="content"
+            name="created_at"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Konten</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" /> Waktu Publish
+                </FormLabel>
                 <FormControl>
-                  <Textarea className="min-h-[200px]" {...field} />
+                  <Input
+                    type="datetime-local"
+                    {...field}
+                    className="block w-full"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* --- SWITCHES --- */}
+          {/* TIPTAP EDITOR */}
+          <FormField
+            control={form.control}
+            name="content"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Konten</FormLabel>
+                <FormControl>
+                  <RichTextEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -347,7 +404,7 @@ export default function PostForm({
                       Unggulan
                     </FormLabel>
                     <FormDescription className="text-xs text-blue-700">
-                      Tampilkan di highlight utama?
+                      Tampilkan di highlight?
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -361,6 +418,7 @@ export default function PostForm({
             />
           </div>
         </div>
+
         <div className="flex justify-end gap-3 pt-2 border-t">
           <Button
             type="button"
