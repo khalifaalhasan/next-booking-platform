@@ -33,13 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
 import Image from "next/image";
@@ -69,12 +63,14 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
     item.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Format Tanggal
+  // --- UPDATE FORMAT DATE (Ada Jam & Menit) ---
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
       year: "numeric",
+      hour: "2-digit", // Tambahan
+      minute: "2-digit", // Tambahan
     });
   };
 
@@ -129,7 +125,7 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
               <th className="px-6 py-4 w-[80px]">Cover</th>
               <th className="px-6 py-4">Judul Artikel</th>
               <th className="px-6 py-4">Kategori</th>
-              <th className="px-6 py-4">Tanggal</th>
+              <th className="px-6 py-4">Publish Date</th>
               <th className="px-6 py-4 text-center">Status</th>
               <th className="px-6 py-4 text-right">Aksi</th>
             </tr>
@@ -166,7 +162,7 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
                   <td className="px-6 py-4 text-slate-600">
                     <Badge variant="outline">{post.category}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-slate-500">
+                  <td className="px-6 py-4 text-slate-500 text-xs whitespace-nowrap">
                     {post.created_at ? formatDate(post.created_at) : "-"}
                   </td>
                   <td className="px-6 py-4 text-center">
@@ -273,7 +269,7 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
         ))}
       </div>
 
-      {/* DIALOG CREATE */}
+      {/* DIALOGS ... (Kode Dialog Sama Persis) ... */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-4xl p-6 overflow-hidden">
           <DialogHeader>
@@ -289,7 +285,6 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG EDIT */}
       <Dialog
         open={!!itemToEdit}
         onOpenChange={(open) => !open && setItemToEdit(null)}
@@ -306,7 +301,6 @@ export default function PostManager({ initialPosts }: PostManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG DELETE */}
       <Dialog
         open={!!itemToDelete}
         onOpenChange={(open) => !open && setItemToDelete(null)}
