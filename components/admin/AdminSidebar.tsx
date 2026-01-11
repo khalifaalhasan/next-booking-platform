@@ -16,6 +16,7 @@ import {
   NotebookPen,
   CalendarPlus2,
   BadgePercent,
+  FilePlusCorner,
 } from "lucide-react";
 
 // 1. Definisikan tipe Props
@@ -44,6 +45,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
           href: "/admin/events",
           icon: CalendarPlus2,
         },
+        {
+          label : "Kelola SOP",
+          href : "/admin/sop",
+          icon : FilePlusCorner,
+        }
       ],
     },
     {
