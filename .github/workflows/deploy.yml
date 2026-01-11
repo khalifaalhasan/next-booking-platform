@@ -1,29 +1,40 @@
-name: Deploy via Self-Hosted Runner
+name: Deploy Release Version
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'  # Trigger hanya kalau tag diawali 'v' (contoh: v1.0.0, v1.0.1)
 
 jobs:
   deploy:
-    runs-on: self-hosted  # <--- INI KUNCINYA (Server Anda sendiri)
+    runs-on: self-hosted
     
     steps:
-      - name: Ambil Kodingan Terbaru
+      - name: Checkout Code
         uses: actions/checkout@v3
-      
-      - name: Install & Build
+        with:
+          fetch-depth: 0  # Penting: Ambil semua history tags
+
+      - name: Deploy Version ${{ github.ref_name }}
         run: |
-          # Masuk folder project (Pastikan path ini BENAR)
+          # 1. Masuk folder
           cd /root/next-booking-platform
           
-          # Tarik update
-          git pull origin main
+          # 2. Reset semua perubahan lokal (jaga-jaga)
+          git reset --hard
           
-          # Install & Build
+          # 3. Ambil info tag terbaru dari GitHub
+          git fetch --all --tags
+          
+          # 4. Pindah ke Versi Tag yang sedang di-release (Bukan branch main!)
+          # ${{ github.ref_name }} otomatis berisi 'v1.0.0'
+          git checkout ${{ github.ref_name }}
+          
+          # 5. Ritual Build Standar
           npm install
           npm run build
           
-          # Restart PM2
+          # 6. Restart PM2
           pm2 restart 0
+          
+          echo "✅ Berhasil deploy versi ${{ github.ref_name }}"
