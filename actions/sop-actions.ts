@@ -173,7 +173,7 @@ export async function updateSop(prevState: any, formData: FormData) {
     const updates: any = {
       title,
       description,
-      updated_at: new Date().toISOString(),
+      
     };
 
     // Logic ganti file jika user upload baru
