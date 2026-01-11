@@ -12,13 +12,13 @@ import {
   FileText,
   Layers,
   Globe,
-  LogOut,
   NotebookPen,
   CalendarPlus2,
   BadgePercent,
+  FilePlusCorner,
+  LogOut,
 } from "lucide-react";
 
-// 1. Definisikan tipe Props
 interface SidebarProps {
   className?: string;
 }
@@ -31,7 +31,6 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
       title: "MENU UTAMA",
       items: [
         { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-
         {
           label: "Kelola Promosi",
           href: "/admin/promotions",
@@ -43,6 +42,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
           label: "Kelola Kegiatan",
           href: "/admin/events",
           icon: CalendarPlus2,
+        },
+        {
+          label: "Kelola SOP",
+          href: "/admin/sop",
+          icon: FilePlusCorner,
         },
       ],
     },
@@ -78,10 +82,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform ${className}`}
+      // UBAH 1: Tambahkan 'flex flex-col' agar layout vertikal rapi
+      className={`fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-200 bg-white shadow-sm transition-transform flex flex-col ${className}`}
     >
-      {/* Header Logo */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100/80">
+      {/* Header Logo (Tinggi statis/fixed) */}
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100/80 shrink-0">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/20">
           <LayoutDashboard size={20} strokeWidth={2} />
         </div>
@@ -95,8 +100,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
         </div>
       </div>
 
-      {/* Menu List */}
-      <div className="h-full overflow-y-auto px-4 pb-20 custom-scrollbar">
+      {/* Menu List (Scrollable Area) */}
+      {/* UBAH 2: Gunakan 'flex-1' menggantikan 'h-full'. 
+          'flex-1' mengisi sisa ruang vertical. 
+          'overflow-y-auto' mengaktifkan scroll jika konten panjang. */}
+      <div className="flex-1 overflow-y-auto px-4 pb-10 pt-4 custom-scrollbar">
         {menuGroups.map((group, idx) => (
           <div key={idx} className="mb-6">
             <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -104,13 +112,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
             </h3>
             <ul className="space-y-1">
               {group.items.map((item, itemIdx) => {
-                // --- LOGIC PERBAIKAN START ---
                 const isActive =
                   item.href === "/admin"
                     ? pathname === "/admin"
                     : pathname === item.href ||
                       pathname.startsWith(`${item.href}/`);
-                // --- LOGIC PERBAIKAN END ---
 
                 return (
                   <li key={itemIdx}>
@@ -133,7 +139,7 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
         ))}
 
         {/* Footer System */}
-        <div className="mt-8 border-t border-slate-100 pt-6">
+        <div className="mt-8 border-t border-slate-100 pt-6 pb-6">
           <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
             Sistem
           </h3>

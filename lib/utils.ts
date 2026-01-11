@@ -52,3 +52,5 @@ export function getInitials(name: string = "", email: string = "") {
   }
   return email.substring(0, 2).toUpperCase() || "U";
 }
+
+

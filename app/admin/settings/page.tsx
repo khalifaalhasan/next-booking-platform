@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import PageHeader from "@/components/admin/AdminPageheader";
+import AdminPageHeader from "@/components/admin/AdminPageheader";
 
 // Schema Validasi Password
 const passwordSchema = z
@@ -64,7 +64,8 @@ export default function AdminSettingsPage() {
       form.reset();
     } catch (error: unknown) {
       // Type-safe error handling
-      const msg = error instanceof Error ? error.message : "Gagal mengganti password";
+      const msg =
+        error instanceof Error ? error.message : "Gagal mengganti password";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -73,9 +74,9 @@ export default function AdminSettingsPage() {
 
   return (
     <>
-      <PageHeader 
-        title="Pengaturan Akun" 
-        description="Kelola keamanan dan preferensi akun Anda." 
+      <AdminPageHeader
+        title="Pengaturan Akun"
+        description="Kelola keamanan dan preferensi akun Anda."
       />
 
       <div className="grid gap-6 max-w-2xl">
@@ -93,7 +94,10 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="password"
@@ -103,11 +107,11 @@ export default function AdminSettingsPage() {
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                          <Input 
-                            type="password" 
-                            placeholder="******" 
+                          <Input
+                            type="password"
+                            placeholder="******"
                             className="pl-9"
-                            {...field} 
+                            {...field}
                           />
                         </div>
                       </FormControl>
@@ -125,11 +129,11 @@ export default function AdminSettingsPage() {
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                          <Input 
-                            type="password" 
-                            placeholder="******" 
+                          <Input
+                            type="password"
+                            placeholder="******"
                             className="pl-9"
-                            {...field} 
+                            {...field}
                           />
                         </div>
                       </FormControl>
@@ -139,8 +143,14 @@ export default function AdminSettingsPage() {
                 />
 
                 <div className="pt-2 flex justify-end">
-                  <Button type="submit" disabled={loading} variant="destructive">
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    variant="destructive"
+                  >
+                    {loading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Update Password
                   </Button>
                 </div>
