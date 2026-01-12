@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   title: "Pusat Pengembangan Bisnis",
   description: "Platform booking gedung dan aset bisnis.",
   verification: {
-    google :'<meta name="google-site-verification" content="yz7wMO0j76td01V7TYb5Wq6aY2eGZN-5Rwm6AcZCSxk" />',
-  }
+    google :'yz7wMO0j76td01V7TYb5Wq6aY2eGZN-5Rwm6AcZCSxk',
+  },
 };
 
 export default function RootLayout({
