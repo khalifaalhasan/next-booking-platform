@@ -103,7 +103,7 @@ export default function Footer() {
                 { label: "Daftar Layanan", href: "/services" },
                 { label: "Artikel & Berita", href: "/blog" },
                 { label: "Tentang Kami", href: "/about" },
-                { label: "Promo Spesial", href: "/promo" },
+                { label: "SOP", href: "/sop" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link
