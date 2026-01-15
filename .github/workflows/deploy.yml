@@ -1,29 +1,43 @@
-name: Deploy via Self-Hosted Runner
+name: Deploy Release Version
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   deploy:
-    runs-on: self-hosted  # <--- INI KUNCINYA (Server Anda sendiri)
+    runs-on: self-hosted
     
     steps:
-      - name: Ambil Kodingan Terbaru
+      - name: Checkout Code
         uses: actions/checkout@v3
-      
-      - name: Install & Build
+        with:
+          fetch-depth: 0
+
+      - name: Deploy Version ${{ github.ref_name }}
         run: |
-          # Masuk folder project (Pastikan path ini BENAR)
           cd /root/next-booking-platform
           
-          # Tarik update
-          git pull origin main
+          # 1. Reset Hard (PENTING: Hapus perubahan sampah akibat npm install lama)
+          git reset --hard
           
-          # Install & Build
-          npm install
+          # 2. Ambil tag terbaru
+          git fetch --all --tags
+          
+          # 3. Pindah ke versi Tag
+          git checkout ${{ github.ref_name }}
+          
+          # 4. CLEAN INSTALL (Perbaikan Utama)
+          # 'npm ci' akan menghapus node_modules dan install ulang SESUAI package-lock.json
+          # Dia TIDAK AKAN mengubah file apapun, jadi Git tetap bersih.
+          npm ci
+          
+          # 5. Build
           npm run build
           
-          # Restart PM2
-          pm2 restart 0
+          # 6. Restart by Name (Lebih aman daripada ID 0)
+          # Ganti 'ppbisnis-app' dengan nama asli di pm2 status kamu kalau beda
+          pm2 restart "ppbisnis-app" || pm2 restart 0
+          
+          echo "✅ Berhasil deploy versi ${{ github.ref_name }}"

@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Pusat Pengembangan Bisnis",
   description: "Platform booking gedung dan aset bisnis.",
+  verification: {
+    google :'yz7wMO0j76td01V7TYb5Wq6aY2eGZN-5Rwm6AcZCSxk',
+  },
 };
 
 export default function RootLayout({
