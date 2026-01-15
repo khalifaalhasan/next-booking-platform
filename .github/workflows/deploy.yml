@@ -3,7 +3,7 @@ name: Deploy Release Version
 on:
   push:
     tags:
-      - 'v*'  # Trigger hanya kalau tag diawali 'v' (contoh: v1.0.0, v1.0.1)
+      - 'v*'
 
 jobs:
   deploy:
@@ -13,28 +13,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Penting: Ambil semua history tags
+          fetch-depth: 0
 
       - name: Deploy Version ${{ github.ref_name }}
         run: |
-          # 1. Masuk folder
           cd /root/next-booking-platform
           
-          # 2. Reset semua perubahan lokal (jaga-jaga)
+          # 1. Reset Hard (PENTING: Hapus perubahan sampah akibat npm install lama)
           git reset --hard
           
-          # 3. Ambil info tag terbaru dari GitHub
+          # 2. Ambil tag terbaru
           git fetch --all --tags
           
-          # 4. Pindah ke Versi Tag yang sedang di-release (Bukan branch main!)
-          # ${{ github.ref_name }} otomatis berisi 'v1.0.0'
+          # 3. Pindah ke versi Tag
           git checkout ${{ github.ref_name }}
           
-          # 5. Ritual Build Standar
-          npm install
+          # 4. CLEAN INSTALL (Perbaikan Utama)
+          # 'npm ci' akan menghapus node_modules dan install ulang SESUAI package-lock.json
+          # Dia TIDAK AKAN mengubah file apapun, jadi Git tetap bersih.
+          npm ci
+          
+          # 5. Build
           npm run build
           
-          # 6. Restart PM2
-          pm2 restart 0
+          # 6. Restart by Name (Lebih aman daripada ID 0)
+          # Ganti 'ppbisnis-app' dengan nama asli di pm2 status kamu kalau beda
+          pm2 restart "ppbisnis-app" || pm2 restart 0
           
           echo "✅ Berhasil deploy versi ${{ github.ref_name }}"
