@@ -28,7 +28,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
     "@tiptap/pm": "^3.15.3",
-    "@tiptap/react": "^3.15.3",
+    "@tiptap/react": "^3.17.1",
     "@tiptap/starter-kit": "^3.15.3",
     "@yudiel/react-qr-scanner": "^2.5.0",
     "class-variance-authority": "^0.7.1",
