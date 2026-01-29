@@ -17,6 +17,7 @@ import {
   BadgePercent,
   FilePlusCorner,
   LogOut,
+  Container,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -47,6 +48,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
           label: "Kelola SOP",
           href: "/admin/sop",
           icon: FilePlusCorner,
+        },
+        {
+          label: "Kelola BMN",
+          href: "/admin/bmn",
+          icon: Container,
         },
       ],
     },
