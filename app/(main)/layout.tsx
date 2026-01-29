@@ -1,7 +1,8 @@
 // app/(main)/layout.tsx
 import WhatsAppFloat from "@/components/common/WhatsappFloat";
 import Footer from "@/components/layouts/Footer";
-import { Navbar } from "@/components/layouts/Navbar";
+import { Navbar } from "@/components/layouts/navbar/Navbar";
+
 
 export default function MainLayout({
   children,
