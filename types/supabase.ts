@@ -35,6 +35,60 @@ export type Database = {
         }
         Relationships: []
       }
+      bmn_records: {
+        Row: {
+          bukti_kepemilikan: string | null
+          created_at: string | null
+          id: string
+          keterangan: string | null
+          kode_barang: string
+          kondisi: string | null
+          kuantitas: number | null
+          lokasi: string | null
+          merek_tipe: string | null
+          nilai_perolehan: number | null
+          nup: string | null
+          satuan: string | null
+          tahun_perolehan: number
+          updated_at: string | null
+          uraian_barang: string
+        }
+        Insert: {
+          bukti_kepemilikan?: string | null
+          created_at?: string | null
+          id?: string
+          keterangan?: string | null
+          kode_barang: string
+          kondisi?: string | null
+          kuantitas?: number | null
+          lokasi?: string | null
+          merek_tipe?: string | null
+          nilai_perolehan?: number | null
+          nup?: string | null
+          satuan?: string | null
+          tahun_perolehan: number
+          updated_at?: string | null
+          uraian_barang: string
+        }
+        Update: {
+          bukti_kepemilikan?: string | null
+          created_at?: string | null
+          id?: string
+          keterangan?: string | null
+          kode_barang?: string
+          kondisi?: string | null
+          kuantitas?: number | null
+          lokasi?: string | null
+          merek_tipe?: string | null
+          nilai_perolehan?: number | null
+          nup?: string | null
+          satuan?: string | null
+          tahun_perolehan?: number
+          updated_at?: string | null
+          uraian_barang?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           created_at: string | null
@@ -444,7 +498,6 @@ export type Database = {
       }
       sops: {
         Row: {
-          updated_at(updated_at: any): import("react").ReactNode
           category_id: string | null
           created_at: string | null
           description: string | null
